@@ -1,0 +1,64 @@
+{
+  "clients": [
+    {
+      "id": "CLT-001",
+      "name": "FinTech Solutions S.A.",
+      "sector": "Financial services",
+      "contact": "carlos.morales@fintechsolutions.com",
+      "contract": "Enterprise",
+      "since": "2022-03",
+      "status": "active",
+      "last_audit": "2024-11-15",
+      "pending_reports": 1,
+      "notes": "Quarterly audits agreed. Priority client."
+    },
+    {
+      "id": "CLT-002",
+      "name": "MedSecure Hospital Group",
+      "sector": "Healthcare",
+      "contact": "it.security@medsecure.org",
+      "contract": "Premium",
+      "since": "2023-01",
+      "status": "active",
+      "last_audit": "2024-10-03",
+      "pending_reports": 0,
+      "notes": "HIPAA compliance required in all reports."
+    },
+    {
+      "id": "CLT-003",
+      "name": "LogiChain Freight",
+      "sector": "Logistics",
+      "contact": "ciso@logichain.net",
+      "contract": "Standard",
+      "since": "2021-07",
+      "status": "active",
+      "last_audit": "2024-09-20",
+      "pending_reports": 2,
+      "notes": "Pending OT/ICS assessment from September."
+    },
+    {
+      "id": "CLT-004",
+      "name": "RetailMax Corp",
+      "sector": "Retail",
+      "contact": "security@retailmax.com",
+      "contract": "Standard",
+      "since": "2023-06",
+      "status": "inactive",
+      "last_audit": "2024-06-10",
+      "pending_reports": 0,
+      "notes": "Contract suspended, renewal pending Q1 2025."
+    },
+    {
+      "id": "CLT-005",
+      "name": "EnergyGrid Nacional",
+      "sector": "Critical infrastructure",
+      "contact": "cso@energygrid.es",
+      "contract": "Enterprise",
+      "since": "2020-11",
+      "status": "active",
+      "last_audit": "2025-01-08",
+      "pending_reports": 1,
+      "notes": "Critical infrastructure. NIS2 directive scope."
+    }
+  ]
+}

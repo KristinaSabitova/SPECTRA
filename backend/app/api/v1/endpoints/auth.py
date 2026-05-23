@@ -1,0 +1,261 @@
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, field_validator
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.dependencies import get_client_ip, get_current_user, require_roles
+from app.core.security import decode_token
+from app.db.database import get_db
+from app.models.user import User, UserRole
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    LoginResponse,
+    RefreshRequest,
+    RegisterRequest,
+    SessionResponse,
+    TOTPDisableRequest,
+    TOTPLoginRequest,
+    TOTPSetupResponse,
+    TokenResponse,
+    UserResponse,
+)
+from app.services.auth_service import AuthService
+from app.services.session_service import SessionService
+
+router = APIRouter()
+
+
+class TOTPEnableConfirmRequest(BaseModel):
+    code: str
+    secret: str
+    backup_codes: list[str]
+
+    @field_validator("code")
+    @classmethod
+    def validate_code(cls, v: str) -> str:
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("code must be 6 digits")
+        return v
+
+
+def _svc(db: AsyncSession) -> AuthService:
+    return AuthService(db)
+
+
+def _current_session_id(request: Request) -> str:
+    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+    payload = decode_token(token)
+    return payload["sid"]
+
+
+# ─────────────────────────── setup ──────────────────────────────────────────
+
+@router.get("/setup-status")
+async def setup_status(db: AsyncSession = Depends(get_db)):
+    needs_setup = await _svc(db).get_setup_status()
+    return {"needs_setup": needs_setup}
+
+
+@router.post("/setup/admin", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def setup_admin(
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    user = await _svc(db).setup_admin(body.email, body.username, body.password)
+    return UserResponse.model_validate(user)
+
+
+# ─────────────────────────── registro ───────────────────────────────────────
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    user = await _svc(db).register(
+        email=body.email,
+        username=body.username,
+        password=body.password,
+        role=UserRole.junior,
+    )
+    return UserResponse.model_validate(user)
+
+
+@router.post(
+    "/register/privileged",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register_privileged(
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+    requester: User = Depends(require_roles(UserRole.admin)),
+):
+    user = await _svc(db).register(
+        email=body.email,
+        username=body.username,
+        password=body.password,
+        role=body.role,
+        requester=requester,
+    )
+    return UserResponse.model_validate(user)
+
+
+# ─────────────────────────── login ──────────────────────────────────────────
+
+@router.post("/login", response_model=LoginResponse)
+async def login(
+    body: LoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    result = await _svc(db).login(body.email, body.password, ip, ua)
+    return LoginResponse(**result)
+
+
+@router.post("/login/2fa", response_model=LoginResponse)
+async def login_2fa(
+    body: TOTPLoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    result = await _svc(db).complete_2fa(body.temp_token, body.code, ip, ua)
+    return LoginResponse(requires_2fa=False, **result)
+
+
+# ─────────────────────────── tokens ─────────────────────────────────────────
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_tokens(
+    body: RefreshRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    tokens = await _svc(db).refresh_tokens(body.refresh_token, ip, ua)
+    return TokenResponse(**tokens)
+
+
+# ─────────────────────────── logout ─────────────────────────────────────────
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session_id = _current_session_id(request)
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    await _svc(db).logout(session_id, current_user.id, ip, ua)
+
+
+@router.post("/logout/all")
+async def logout_all(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    count = await _svc(db).logout_all(current_user.id, ip, ua)
+    return {"sessions_revoked": count}
+
+
+# ─────────────────────────── perfil y contraseña ─────────────────────────────
+
+@router.get("/me", response_model=UserResponse)
+async def me(current_user: User = Depends(get_current_user)):
+    return UserResponse.model_validate(current_user)
+
+
+@router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    await _svc(db).change_password(current_user, body.current_password, body.new_password, ip, ua)
+
+
+# ─────────────────────────── sesiones ────────────────────────────────────────
+
+@router.get("/sessions", response_model=list[SessionResponse])
+async def list_sessions(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_sid = _current_session_id(request)
+    sessions = await SessionService(db).list_active(current_user.id)
+    return [
+        SessionResponse(
+            id=s.id,
+            ip_address=s.ip_address,
+            user_agent=s.user_agent,
+            created_at=s.created_at,
+            expires_at=s.expires_at,
+            is_current=(s.id == current_sid),
+        )
+        for s in sessions
+    ]
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_session(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    svc = SessionService(db)
+    session = await svc.get_by_id(session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    await svc.revoke(session_id)
+    await db.commit()
+
+
+# ─────────────────────────── 2FA ─────────────────────────────────────────────
+
+@router.post("/2fa/setup", response_model=TOTPSetupResponse)
+async def setup_2fa(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await _svc(db).setup_totp(current_user)
+
+
+@router.post("/2fa/enable")
+async def enable_2fa(
+    body: TOTPEnableConfirmRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    await _svc(db).enable_totp(
+        current_user, body.code, body.secret, body.backup_codes, ip, ua
+    )
+    return {"enabled": True}
+
+
+@router.delete("/2fa")
+async def disable_2fa(
+    body: TOTPDisableRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ip = get_client_ip(request)
+    ua = request.headers.get("User-Agent")
+    await _svc(db).disable_totp(current_user, body.code, ip, ua)
+    return {"disabled": True}
