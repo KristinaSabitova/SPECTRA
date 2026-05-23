@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
@@ -37,6 +38,25 @@ app = FastAPI(
     description="Internal AI assistant for cybersecurity firm operations — SPECTRA Lab target",
     version="1.0.0",
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/")
+async def root():
+    return {
+        "name": "CyberSec Internal Assistant",
+        "version": "1.0.0",
+        "framework": "langchain",
+        "status": "running",
+        "endpoints": ["/invoke", "/health", "/info"],
+    }
 
 
 class InvokeRequest(BaseModel):
