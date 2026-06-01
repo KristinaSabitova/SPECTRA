@@ -23,9 +23,25 @@ export interface TokenResponse {
 export interface LoginResponse {
   requires_2fa: boolean
   must_change_password?: boolean
+  must_setup_totp?: boolean
   temp_token?: string
   tokens?: TokenResponse
   user?: UserResponse
+}
+
+// ── Config Scan (public) ──────────────────────────────────────────────
+
+export interface ScanFinding {
+  severity: 'critical' | 'high' | 'medium' | 'low' | 'info'
+  title: string
+  fragment: string
+  suggestion: string
+}
+
+export interface ConfigScanResponse {
+  score: number
+  risk_level: 'safe' | 'low' | 'medium' | 'high' | 'critical'
+  findings: ScanFinding[]
 }
 
 export interface TOTPSetupResponse {

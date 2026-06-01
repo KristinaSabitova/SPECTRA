@@ -3,6 +3,7 @@ import type {
   LoginResponse, TokenResponse, RunResponse, EngineEvent,
   CreateRunRequest, Pipeline, Audit, ReportListItem,
   UserResponse, TOTPSetupResponse, CreateUserResponse, UserRole,
+  ConfigScanResponse,
 } from '@/types'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
@@ -155,4 +156,16 @@ export const engineApi = {
       reader?.cancel()
     }
   },
+
+  downloadReport: (runId: string, format: 'markdown' | 'pdf' | 'html') => {
+    const token = getToken()
+    return fetch(`${BASE_URL}/engine/runs/${runId}/report?format=${format}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  },
+}
+
+export const publicApi = {
+  configScan: (system_prompt: string) =>
+    api.post<ConfigScanResponse>('/public/config-scan', { system_prompt }),
 }

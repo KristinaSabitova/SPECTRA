@@ -15,6 +15,7 @@ import Profile from '@/pages/Profile'
 import Users from '@/pages/Users'
 import ConfigAudit from '@/pages/ConfigAudit'
 import ForceChangePassword from '@/pages/ForceChangePassword'
+import Scan from '@/pages/Scan'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -62,7 +63,9 @@ export default function App() {
   return (
     <Suspense fallback={<Spinner page />}>
       <Routes>
+        {/* Public routes — no auth required */}
         <Route path="/login" element={<Login />} />
+        <Route path="/scan" element={<Scan />} />
 
         <Route
           path="/*"
