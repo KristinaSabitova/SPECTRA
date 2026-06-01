@@ -1,12 +1,16 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_client_ip, get_current_user, require_roles
+from app.core.rate_limiter import auth_limiter
 from app.core.security import decode_token
 from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import (
+    AuditLogEntry,
     ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
@@ -23,6 +27,7 @@ from app.services.auth_service import AuthService
 from app.services.session_service import SessionService
 
 router = APIRouter()
+_log = logging.getLogger("spectra.auth")
 
 
 class TOTPEnableConfirmRequest(BaseModel):
@@ -70,8 +75,12 @@ async def setup_admin(
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     body: RegisterRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    ip = get_client_ip(request)
+    # Rate limit: 5 registration attempts per IP per minute
+    await auth_limiter.check(f"register:{ip}")
     user = await _svc(db).register(
         email=body.email,
         username=body.username,
@@ -110,8 +119,13 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ):
     ip = get_client_ip(request)
+    # Rate limit: 5 login attempts per IP per minute
+    await auth_limiter.check(f"login:{ip}")
     ua = request.headers.get("User-Agent")
     result = await _svc(db).login(body.email, body.password, ip, ua)
+    # Reset rate limit on successful credential check (2FA may still be required)
+    if not result.get("requires_2fa"):
+        auth_limiter.reset(f"login:{ip}")
     return LoginResponse(**result)
 
 
@@ -122,8 +136,11 @@ async def login_2fa(
     db: AsyncSession = Depends(get_db),
 ):
     ip = get_client_ip(request)
+    # Rate limit: 5 2FA attempts per IP per minute (separate key)
+    await auth_limiter.check(f"2fa:{ip}")
     ua = request.headers.get("User-Agent")
     result = await _svc(db).complete_2fa(body.temp_token, body.code, ip, ua)
+    auth_limiter.reset(f"2fa:{ip}")
     return LoginResponse(requires_2fa=False, **result)
 
 
@@ -259,3 +276,17 @@ async def disable_2fa(
     ua = request.headers.get("User-Agent")
     await _svc(db).disable_totp(current_user, body.code, ip, ua)
     return {"disabled": True}
+
+
+# ─────────────────────────── audit log ───────────────────────────────────────
+
+@router.get("/audit-log", response_model=list[AuditLogEntry])
+async def get_audit_log(
+    limit: int = 50,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the personal audit log for the authenticated user."""
+    entries = await _svc(db).get_audit_log(current_user.id, limit=limit, offset=offset)
+    return [AuditLogEntry.model_validate(e) for e in entries]

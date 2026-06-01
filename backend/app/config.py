@@ -1,11 +1,15 @@
+import sys
 from datetime import timedelta
 
 from pydantic_settings import BaseSettings
 
+_DEFAULT_SECRET = "dev-secret-key-change-in-production"
+_DEFAULT_JWT = "dev-jwt-secret-change-in-production"
+
 
 class Settings(BaseSettings):
     app_env: str = "development"
-    app_secret_key: str = "dev-secret-key-change-in-production"
+    app_secret_key: str = _DEFAULT_SECRET
     app_debug: bool = True
 
     # Set DATABASE_URL to use PostgreSQL in production:
@@ -13,10 +17,12 @@ class Settings(BaseSettings):
     # Defaults to SQLite for local development.
     database_url: str = "sqlite+aiosqlite:///./spectra.db"
 
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # Comma-separated list of allowed CORS origins, or JSON array string.
+    # In production, set ALLOWED_ORIGINS to your frontend domain(s).
+    allowed_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # JWT
-    jwt_secret_key: str = "dev-jwt-secret-change-in-production"
+    jwt_secret_key: str = _DEFAULT_JWT
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
@@ -24,6 +30,25 @@ class Settings(BaseSettings):
 
     # TOTP
     totp_issuer: str = "SPECTRA"
+
+    # Usage limits (0 = unlimited)
+    max_runs_per_day: int = 0
+    max_targets: int = 0
+    max_run_timeout_seconds: int = 120
+
+    # Data retention
+    data_retention_days: int = 90
+
+    # Optional Anthropic API key for SEMANTIC_PARAPHRASE mutation
+    anthropic_api_key: str = ""
+
+    @property
+    def cors_origins(self) -> list[str]:
+        raw = self.allowed_origins.strip()
+        if raw.startswith("["):
+            import json
+            return json.loads(raw)
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     @property
     def access_token_expire(self) -> timedelta:
@@ -33,8 +58,45 @@ class Settings(BaseSettings):
     def refresh_token_expire(self) -> timedelta:
         return timedelta(days=self.jwt_refresh_token_expire_days)
 
-    class Config:
-        env_file = ".env"
+    model_config = {"env_file": ".env"}
 
 
 settings = Settings()
+
+
+def validate_secrets() -> None:
+    """
+    Refuse to start with insecure defaults in production.
+    Called from the FastAPI lifespan so the error is visible at startup.
+    """
+    env = settings.app_env.lower()
+    if env == "production":
+        errors: list[str] = []
+        if settings.app_secret_key == _DEFAULT_SECRET or len(settings.app_secret_key) < 32:
+            errors.append(
+                "APP_SECRET_KEY is the default value or shorter than 32 characters. "
+                "Set a strong random secret in your .env file."
+            )
+        if settings.jwt_secret_key == _DEFAULT_JWT or len(settings.jwt_secret_key) < 32:
+            errors.append(
+                "JWT_SECRET_KEY is the default value or shorter than 32 characters. "
+                "Set a strong random secret in your .env file."
+            )
+        if errors:
+            for msg in errors:
+                print(f"[SPECTRA STARTUP ERROR] {msg}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Development: warn but don't exit
+        if settings.app_secret_key == _DEFAULT_SECRET:
+            print(
+                "[SPECTRA WARNING] APP_SECRET_KEY is the default development value. "
+                "Change it before deploying to production.",
+                file=sys.stderr,
+            )
+        if settings.jwt_secret_key == _DEFAULT_JWT:
+            print(
+                "[SPECTRA WARNING] JWT_SECRET_KEY is the default development value. "
+                "Change it before deploying to production.",
+                file=sys.stderr,
+            )

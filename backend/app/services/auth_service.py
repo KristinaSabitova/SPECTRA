@@ -52,6 +52,7 @@ class AuthService:
         email: str | None = None,
         detail: dict | None = None,
     ) -> None:
+        # Never log passwords, tokens, or agent responses
         self.db.add(
             AccessLog(
                 user_id=user_id,
@@ -204,9 +205,13 @@ class AuthService:
         await self._log("login", True, ip, user_agent, user_id=user.id)
         await self.db.commit()
 
+        # Enforce 2FA setup on first login — signal the frontend to redirect
+        must_setup_totp = not user.totp_enabled
+
         return {
             "requires_2fa": False,
             "must_change_password": user.is_temporary_password,
+            "must_setup_totp": must_setup_totp,
             "tokens": self._build_tokens(user, session, raw_refresh),
             "user": user,
         }
@@ -257,6 +262,7 @@ class AuthService:
         if not user or not user.is_active:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
 
+        # Token rotation: invalidate the old session, create a new one
         await self._session_svc.revoke(session.id)
         new_session, new_raw = await self._session_svc.create(user.id, ip, user_agent)
         await self._log("token_refresh", True, ip, user_agent, user_id=user.id)
@@ -329,3 +335,17 @@ class AuthService:
         self._totp_svc.disable(user)
         await self._log("2fa_disable", True, ip, user_agent, user_id=user.id)
         await self.db.commit()
+
+    # ------------------------------------------------------------------ audit log
+
+    async def get_audit_log(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> list[AccessLog]:
+        result = await self.db.execute(
+            select(AccessLog)
+            .where(AccessLog.user_id == user_id)
+            .order_by(AccessLog.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())

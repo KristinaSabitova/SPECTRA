@@ -20,13 +20,17 @@ class ExecutionRun(Base):
     __tablename__ = "execution_runs"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    # Owner of this run — nullable to support pre-migration rows
+    user_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     audit_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("audits.id", ondelete="SET NULL")
     )
     pipeline_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("pipelines.id", ondelete="SET NULL")
     )
-    target_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    target_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     framework: Mapped[str | None] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(20), default=RunStatus.queued)
     config: Mapped[dict | None] = mapped_column(JSON)
@@ -39,6 +43,8 @@ class ExecutionRun(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # TTL: job in app/tasks/cleanup.py purges rows after this timestamp
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )

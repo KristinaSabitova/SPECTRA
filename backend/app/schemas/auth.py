@@ -1,7 +1,8 @@
 import re
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.user import UserRole
 
@@ -14,9 +15,9 @@ _BACKUP_CODE_RE = re.compile(r"^[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}$")
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
-    username: str
-    password: str
+    email: Annotated[EmailStr, Field(max_length=255)]
+    username: Annotated[str, Field(min_length=3, max_length=50)]
+    password: Annotated[str, Field(min_length=12, max_length=128)]
     role: UserRole = UserRole.junior
 
     @field_validator("username")
@@ -37,13 +38,13 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: Annotated[str, Field(max_length=255)]
+    password: Annotated[str, Field(max_length=128)]
 
 
 class TOTPLoginRequest(BaseModel):
-    temp_token: str
-    code: str
+    temp_token: Annotated[str, Field(max_length=512)]
+    code: Annotated[str, Field(max_length=10)]
 
     @field_validator("code")
     @classmethod
@@ -54,7 +55,7 @@ class TOTPLoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: Annotated[str, Field(max_length=512)]
 
 
 class TokenResponse(BaseModel):
@@ -73,6 +74,7 @@ class UserResponse(BaseModel):
     is_temporary_password: bool
     totp_enabled: bool
     created_at: datetime
+    # password_hash is intentionally excluded from all response schemas
 
     model_config = {"from_attributes": True}
 
@@ -80,6 +82,7 @@ class UserResponse(BaseModel):
 class LoginResponse(BaseModel):
     requires_2fa: bool = False
     must_change_password: bool = False
+    must_setup_totp: bool = False
     temp_token: str | None = None
     tokens: TokenResponse | None = None
     user: "UserResponse | None" = None
@@ -103,7 +106,7 @@ class TOTPSetupResponse(BaseModel):
 
 
 class TOTPEnableRequest(BaseModel):
-    code: str
+    code: Annotated[str, Field(max_length=10)]
 
     @field_validator("code")
     @classmethod
@@ -114,7 +117,7 @@ class TOTPEnableRequest(BaseModel):
 
 
 class TOTPDisableRequest(BaseModel):
-    code: str
+    code: Annotated[str, Field(max_length=10)]
 
     @field_validator("code")
     @classmethod
@@ -125,8 +128,8 @@ class TOTPDisableRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
+    current_password: Annotated[str, Field(max_length=128)]
+    new_password: Annotated[str, Field(min_length=12, max_length=128)]
 
     @field_validator("new_password")
     @classmethod
@@ -139,8 +142,8 @@ class ChangePasswordRequest(BaseModel):
 
 
 class CreateUserRequest(BaseModel):
-    email: EmailStr
-    username: str
+    email: Annotated[EmailStr, Field(max_length=255)]
+    username: Annotated[str, Field(min_length=3, max_length=50)]
     role: UserRole = UserRole.junior
 
     @field_validator("username")
@@ -154,6 +157,16 @@ class CreateUserRequest(BaseModel):
 class CreateUserResponse(BaseModel):
     user: "UserResponse"
     temp_password: str
+
+
+class AuditLogEntry(BaseModel):
+    id: str
+    action: str
+    success: bool
+    ip_address: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 LoginResponse.model_rebuild()

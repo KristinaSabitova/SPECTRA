@@ -155,11 +155,16 @@ class ExecutionRunner:
             payloads = payloads[:cfg.max_payloads]
 
         # ── 3. Send payloads + classify responses ─────────────────────
+        # SSRF validation: re-check before the actual HTTP connection in case
+        # DNS was resolved at request creation time (DNS rebinding mitigation)
+        from app.core.ssrf_protection import validate_target_url
+        validate_target_url(cfg.target_url)
+
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(cfg.request_timeout),
             headers=cfg.auth_headers,
-            follow_redirects=True,
-            verify=False,
+            follow_redirects=False,  # Never follow redirects to avoid SSRF via redirect
+            verify=True,
         ) as client:
             invoke_url = self._best_invoke_url(profile)
 
