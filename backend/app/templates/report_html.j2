@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPECTRA Report — {{ run.id[:8] }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           background: #F8F9FA; color: #0D0D0D; padding: 40px; font-size: 14px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start;
+              border-bottom: 2px solid #E5E7EB; padding-bottom: 24px; margin-bottom: 32px; }
+    .header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+    .header .meta { font-size: 12px; color: #6B7280; text-align: right; }
+    .score-section { display: flex; gap: 24px; margin-bottom: 32px; }
+    .score-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
+                  padding: 24px; flex: 1; }
+    .score-card h3 { font-size: 12px; font-weight: 600; color: #6B7280;
+                     text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .score-value { font-size: 32px; font-weight: 700; }
+    .score-value.critical { color: #DC2626; }
+    .score-value.high { color: #D97706; }
+    .score-value.medium { color: #F59E0B; }
+    .score-value.low { color: #10B981; }
+    .score-value.none { color: #6B7280; }
+    .gauge-svg { display: block; margin: 0 auto 8px; }
+    .section { margin-bottom: 32px; }
+    .section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px;
+                  padding-bottom: 8px; border-bottom: 1px solid #E5E7EB; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th { background: #F3F4F6; text-align: left; padding: 10px 12px;
+         font-size: 11px; font-weight: 600; text-transform: uppercase;
+         letter-spacing: 0.5px; color: #374151; border-bottom: 1px solid #E5E7EB; }
+    td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px;
+             font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .badge-critical { background: #FEE2E2; color: #DC2626; }
+    .badge-high { background: #FEF3C7; color: #D97706; }
+    .badge-medium { background: #FFF3CD; color: #B45309; }
+    .badge-low { background: #D1FAE5; color: #059669; }
+    .badge-info { background: #DBEAFE; color: #2563EB; }
+    .code-block { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px;
+                  padding: 8px 12px; font-family: "SF Mono", Menlo, monospace;
+                  font-size: 11px; white-space: pre-wrap; word-break: break-all;
+                  max-height: 120px; overflow: hidden; }
+    .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #E5E7EB;
+              font-size: 11px; color: #9CA3AF; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>SPECTRA Security Report</h1>
+    <div style="color:#6B7280; margin-top:4px; font-size:13px;">
+      Run <code>{{ run.id[:8] }}</code> · {{ run.target_url }}
+    </div>
+  </div>
+  <div class="meta">
+    <div>Generated {{ now }}</div>
+    <div style="margin-top:4px;">Framework: {{ run.framework or "Unknown" }}</div>
+    <div>Status: {{ run.status }}</div>
+  </div>
+</div>
+
+<div class="score-section">
+  <!-- Score gauge -->
+  <div class="score-card" style="text-align:center; flex: 0 0 200px;">
+    <h3>Risk Score</h3>
+    <svg class="gauge-svg" width="120" height="70" viewBox="0 0 120 70">
+      <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#E5E7EB" stroke-width="12"/>
+      <path d="M10,60 A50,50 0 0,1 110,60" fill="none"
+            stroke="{{ gauge_color }}" stroke-width="12"
+            stroke-dasharray="{{ gauge_dash }} {{ gauge_total }}"
+            stroke-linecap="round"/>
+    </svg>
+    <div class="score-value {{ score_class }}">{{ score_display }}</div>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="score-card">
+    <h3>Summary</h3>
+    <table>
+      <tr><td>Total Events</td><td><strong>{{ run.total_events }}</strong></td></tr>
+      <tr><td>Findings</td><td><strong>{{ run.findings_count }}</strong></td></tr>
+      <tr><td>Blast Radius</td><td><strong>{{ "%.2f"|format(run.blast_radius_score or 0) }}</strong></td></tr>
+      <tr><td>Persistence</td>
+          <td><strong>{{ "⚠️ Detected" if run.persistence_detected else "✓ None" }}</strong></td></tr>
+    </table>
+  </div>
+
+  <!-- Severity breakdown -->
+  <div class="score-card">
+    <h3>By Severity</h3>
+    {% for sev, count in severity_counts.items() %}
+    <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+      <span class="badge badge-{{ sev }}">{{ sev }}</span>
+      <strong>{{ count }}</strong>
+    </div>
+    {% else %}
+    <span style="color:#9CA3AF;">No findings</span>
+    {% endfor %}
+  </div>
+</div>
+
+{% if findings %}
+<div class="section">
+  <h2>Findings</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Severity</th>
+        <th>Classification</th>
+        <th>Event Type</th>
+        <th>Node</th>
+        <th>Payload Excerpt</th>
+        <th>Response Excerpt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr>
+        <td><span class="badge badge-{{ f.severity }}">{{ f.severity }}</span></td>
+        <td>{{ f.classification }}</td>
+        <td>{{ f.event_type }}</td>
+        <td style="font-family:monospace; font-size:11px;">{{ f.node_id or "—" }}</td>
+        <td><div class="code-block">{{ (f.payload_sent or "") | truncate(200) }}</div></td>
+        <td><div class="code-block">{{ (f.response_received or "") | truncate(200) }}</div></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if run.blast_radius_detail %}
+<div class="section">
+  <h2>Blast Radius Analysis</h2>
+  <table>
+    <tr><td>Score</td><td><strong>{{ "%.2f"|format(run.blast_radius_score or 0) }}</strong></td></tr>
+    <tr><td>Affected Nodes</td>
+        <td>{{ run.blast_radius_detail.get("affected_nodes", []) | join(", ") or "None" }}</td></tr>
+    <tr><td>Cascade Depth</td>
+        <td>{{ run.blast_radius_detail.get("cascade_depth", 0) }}</td></tr>
+  </table>
+</div>
+{% endif %}
+
+<div class="section">
+  <h2>Recommendations</h2>
+  <ul style="padding-left:20px; line-height:1.8;">
+    {% if run.persistence_detected %}
+    <li>Persistence detected — review memory and context management in the pipeline.</li>
+    {% endif %}
+    {% if (run.blast_radius_score or 0) > 0.7 %}
+    <li>High blast radius score — consider adding guardrails between pipeline nodes.</li>
+    {% endif %}
+    {% if run.findings_count > 0 %}
+    <li>Review and harden system prompts against prompt injection techniques.</li>
+    <li>Implement output validation to detect instruction-following compliance.</li>
+    <li>Apply least-privilege principles to agent tool permissions.</li>
+    {% else %}
+    <li>No findings — continue monitoring with updated payload catalogs.</li>
+    {% endif %}
+  </ul>
+</div>
+
+<div class="footer">
+  Generated by SPECTRA — AI Agent Security Platform · Run {{ run.id }}
+</div>
+
+</body>
+</html>
