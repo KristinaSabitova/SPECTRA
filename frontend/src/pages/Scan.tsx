@@ -36,7 +36,7 @@ function RiskGauge({ score, riskLevel }: { score: number; riskLevel: string }) {
   )
 }
 
-function FindingCard({ f, index }: { f: ScanFinding; index: number }) {
+function FindingCard({ f }: { f: ScanFinding; index?: number }) {
   const [expanded, setExpanded] = useState(false)
   const color = SEV_COLOR[f.severity] ?? '#6B7280'
   return (
@@ -136,10 +136,6 @@ export default function Scan() {
     ].join('\n\n')
     navigator.clipboard.writeText(md)
   }, [result])
-
-  const findingsBySev = result
-    ? SEV_ORDER.filter(s => result.findings.some(f => f.severity === s))
-    : []
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8F9FA', padding: '40px 24px' }}>
