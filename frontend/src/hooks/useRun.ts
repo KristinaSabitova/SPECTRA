@@ -60,7 +60,7 @@ export function useRun(runId: string): UseRunResult {
     try {
       const [runRes, eventsRes] = await Promise.all([
         engineApi.getRun(runId),
-        engineApi.getEvents(runId),
+        engineApi.getEvents(runId, 1000),
       ])
       setRun(runRes.data)
       setEvents(eventsRes.data)

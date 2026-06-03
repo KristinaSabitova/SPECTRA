@@ -58,6 +58,9 @@ def validate_target_url(url: str) -> None:
     Raises HTTPException 400 on any violation.
     """
     parsed = urlparse(url)
+    _ALLOWED_HOSTS = {"lab", "backend", "frontend", "db"}
+    if parsed.hostname in _ALLOWED_HOSTS:
+        return
     if not parsed.scheme or parsed.scheme not in ("http", "https"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

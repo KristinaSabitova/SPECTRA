@@ -2,6 +2,18 @@
 .env
 .env.local
 .env.*.local
+lab/.env
+
+# Certificados y claves privadas
+certs/
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# Claude Code settings (pueden contener historial de comandos con credenciales)
+.claude/settings.local.json
 
 # Python
 __pycache__/
