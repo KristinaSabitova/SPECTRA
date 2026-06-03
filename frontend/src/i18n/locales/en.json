@@ -186,7 +186,20 @@
     "title": "Detected findings", "noFindings": "No critical findings", "noFindingsDesc": "No malicious or suspicious responses detected",
     "columns": { "type": "Type", "severity": "Severity", "classification": "Classification", "indicators": "Indicators", "node": "Node" },
     "classifications": { "malicious": "Malicious", "suspicious": "Suspicious", "benign": "Benign", "unknown": "Unknown" },
-    "payloadTypes": { "tool_misuse": "Tool misuse", "context_poison": "Context poisoning", "role_override": "Role override", "exfiltration": "Exfiltration", "instruction_hijack": "Instruction hijack", "persistence_plant": "Persistence plant", "jailbreak_assist": "Jailbreak assist" }
+    "payloadTypes": { "tool_misuse": "Tool misuse", "context_poison": "Context poisoning", "role_override": "Role override", "exfiltration": "Exfiltration", "instruction_hijack": "Instruction hijack", "persistence_plant": "Persistence plant", "jailbreak_assist": "Jailbreak assist" },
+    "detail": {
+      "description": "Payload description",
+      "reasoning": "Forensic reasoning",
+      "matches": "Forensic matches",
+      "at_line": "Line",
+      "pattern": "Pattern",
+      "triggered_malicious": "Triggered: malicious",
+      "triggered_suspicious": "Triggered: suspicious",
+      "what_payload_does": "What the payload does",
+      "evidence": "Evidence",
+      "risk_implication": "Risk implication",
+      "what_agent_should_have_done": "Expected behavior"
+    }
   },
   "report": {
     "title": "Export report", "export": "Export", "selectLevel": "Select detail level",

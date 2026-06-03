@@ -112,7 +112,7 @@ export default function FindingsList({ events }: Props) {
                         {payloadDesc && (
                           <div className="finding-detail-section">
                             <span className="finding-detail-label">
-                              {t('findings.detail.description', 'Payload description')}
+                              {t('findings.detail.description')}
                             </span>
                             <p className="finding-detail-desc">{payloadDesc}</p>
                           </div>
@@ -121,7 +121,7 @@ export default function FindingsList({ events }: Props) {
                         {reasoning && (
                           <div className="finding-detail-section">
                             <span className="finding-detail-label">
-                              {t('findings.detail.reasoning', 'Forensic reasoning')}
+                              {t('findings.detail.reasoning')}
                             </span>
                             <pre className="finding-detail-reasoning">{reasoning}</pre>
                           </div>
@@ -130,7 +130,7 @@ export default function FindingsList({ events }: Props) {
                         {forensicMatches.length > 0 && (
                           <div className="finding-detail-section">
                             <span className="finding-detail-label">
-                              {t('findings.detail.matches', 'Forensic matches')} ({forensicMatches.length})
+                              {t('findings.detail.matches')} ({forensicMatches.length})
                             </span>
                             <div className="forensic-match-list">
                               {forensicMatches.map((m, i) => (

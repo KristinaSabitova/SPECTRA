@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPECTRA Report — {{ run.id[:8] }}</title>
+  <title>Informe SPECTRA — {{ run.id[:8] }}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -52,22 +52,22 @@
 
 <div class="header">
   <div>
-    <h1>SPECTRA Security Report</h1>
+    <h1>Informe de Seguridad SPECTRA</h1>
     <div style="color:#6B7280; margin-top:4px; font-size:13px;">
-      Run <code>{{ run.id[:8] }}</code> · {{ run.target_url }}
+      Ejecución <code>{{ run.id[:8] }}</code> · {{ run.target_url }}
     </div>
   </div>
   <div class="meta">
-    <div>Generated {{ now }}</div>
-    <div style="margin-top:4px;">Framework: {{ run.framework or "Unknown" }}</div>
-    <div>Status: {{ run.status }}</div>
+    <div>Generado {{ now }}</div>
+    <div style="margin-top:4px;">Framework: {{ run.framework or "Desconocido" }}</div>
+    <div>Estado: {{ run.status }}</div>
   </div>
 </div>
 
 <div class="score-section">
-  <!-- Score gauge -->
+  <!-- Gauge de puntuación -->
   <div class="score-card" style="text-align:center; flex: 0 0 200px;">
-    <h3>Risk Score</h3>
+    <h3>Puntuación de Riesgo</h3>
     <svg class="gauge-svg" width="120" height="70" viewBox="0 0 120 70">
       <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#E5E7EB" stroke-width="12"/>
       <path d="M10,60 A50,50 0 0,1 110,60" fill="none"
@@ -78,44 +78,44 @@
     <div class="score-value {{ score_class }}">{{ score_display }}</div>
   </div>
 
-  <!-- Summary stats -->
+  <!-- Estadísticas de resumen -->
   <div class="score-card">
-    <h3>Summary</h3>
+    <h3>Resumen</h3>
     <table>
-      <tr><td>Total Events</td><td><strong>{{ run.total_events }}</strong></td></tr>
-      <tr><td>Findings</td><td><strong>{{ run.findings_count }}</strong></td></tr>
+      <tr><td>Total de Eventos</td><td><strong>{{ run.total_events }}</strong></td></tr>
+      <tr><td>Hallazgos</td><td><strong>{{ run.findings_count }}</strong></td></tr>
       <tr><td>Blast Radius</td><td><strong>{{ "%.2f"|format(run.blast_radius_score or 0) }}</strong></td></tr>
-      <tr><td>Persistence</td>
-          <td><strong>{{ "⚠️ Detected" if run.persistence_detected else "✓ None" }}</strong></td></tr>
+      <tr><td>Persistencia</td>
+          <td><strong>{{ "⚠️ Detectada" if run.persistence_detected else "✓ Ninguna" }}</strong></td></tr>
     </table>
   </div>
 
-  <!-- Severity breakdown -->
+  <!-- Desglose por severidad -->
   <div class="score-card">
-    <h3>By Severity</h3>
+    <h3>Por Severidad</h3>
     {% for sev, count in severity_counts.items() %}
     <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
       <span class="badge badge-{{ sev }}">{{ sev }}</span>
       <strong>{{ count }}</strong>
     </div>
     {% else %}
-    <span style="color:#9CA3AF;">No findings</span>
+    <span style="color:#9CA3AF;">Sin hallazgos</span>
     {% endfor %}
   </div>
 </div>
 
 {% if findings %}
 <div class="section">
-  <h2>Findings</h2>
+  <h2>Hallazgos</h2>
   <table>
     <thead>
       <tr>
-        <th>Severity</th>
-        <th>Classification</th>
-        <th>Event Type</th>
-        <th>Node</th>
-        <th>Payload Excerpt</th>
-        <th>Response Excerpt</th>
+        <th>Severidad</th>
+        <th>Clasificación</th>
+        <th>Tipo de Evento</th>
+        <th>Nodo</th>
+        <th>Fragmento de Payload</th>
+        <th>Fragmento de Respuesta</th>
       </tr>
     </thead>
     <tbody>
@@ -136,38 +136,38 @@
 
 {% if run.blast_radius_detail %}
 <div class="section">
-  <h2>Blast Radius Analysis</h2>
+  <h2>Análisis de Blast Radius</h2>
   <table>
-    <tr><td>Score</td><td><strong>{{ "%.2f"|format(run.blast_radius_score or 0) }}</strong></td></tr>
-    <tr><td>Affected Nodes</td>
-        <td>{{ run.blast_radius_detail.get("affected_nodes", []) | join(", ") or "None" }}</td></tr>
-    <tr><td>Cascade Depth</td>
+    <tr><td>Puntuación</td><td><strong>{{ "%.2f"|format(run.blast_radius_score or 0) }}</strong></td></tr>
+    <tr><td>Nodos Afectados</td>
+        <td>{{ run.blast_radius_detail.get("affected_nodes", []) | join(", ") or "Ninguno" }}</td></tr>
+    <tr><td>Profundidad en Cascada</td>
         <td>{{ run.blast_radius_detail.get("cascade_depth", 0) }}</td></tr>
   </table>
 </div>
 {% endif %}
 
 <div class="section">
-  <h2>Recommendations</h2>
+  <h2>Recomendaciones</h2>
   <ul style="padding-left:20px; line-height:1.8;">
     {% if run.persistence_detected %}
-    <li>Persistence detected — review memory and context management in the pipeline.</li>
+    <li>Persistencia detectada — revisa la gestión de memoria y contexto en el pipeline.</li>
     {% endif %}
     {% if (run.blast_radius_score or 0) > 0.7 %}
-    <li>High blast radius score — consider adding guardrails between pipeline nodes.</li>
+    <li>Puntuación de blast radius alta — considera añadir salvaguardas entre los nodos del pipeline.</li>
     {% endif %}
     {% if run.findings_count > 0 %}
-    <li>Review and harden system prompts against prompt injection techniques.</li>
-    <li>Implement output validation to detect instruction-following compliance.</li>
-    <li>Apply least-privilege principles to agent tool permissions.</li>
+    <li>Revisa y refuerza los system prompts contra técnicas de prompt injection.</li>
+    <li>Implementa validación de salida para detectar cumplimiento de instrucciones inyectadas.</li>
+    <li>Aplica principios de mínimo privilegio a los permisos de herramientas del agente.</li>
     {% else %}
-    <li>No findings — continue monitoring with updated payload catalogs.</li>
+    <li>Sin hallazgos — continúa monitorizando con catálogos de payloads actualizados.</li>
     {% endif %}
   </ul>
 </div>
 
 <div class="footer">
-  Generated by SPECTRA — AI Agent Security Platform · Run {{ run.id }}
+  Generado por SPECTRA — Plataforma de Seguridad para Agentes IA · Ejecución {{ run.id }}
 </div>
 
 </body>

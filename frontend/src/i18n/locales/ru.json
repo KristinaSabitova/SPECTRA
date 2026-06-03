@@ -186,7 +186,20 @@
     "title": "Обнаруженные находки", "noFindings": "Критических находок нет", "noFindingsDesc": "Вредоносные или подозрительные ответы не обнаружены",
     "columns": { "type": "Тип", "severity": "Критичность", "classification": "Классификация", "indicators": "Индикаторы", "node": "Узел" },
     "classifications": { "malicious": "Вредоносный", "suspicious": "Подозрительный", "benign": "Безопасный", "unknown": "Неизвестный" },
-    "payloadTypes": { "tool_misuse": "Злоупотребление инструментом", "context_poison": "Отравление контекста", "role_override": "Переопределение роли", "exfiltration": "Эксфильтрация", "instruction_hijack": "Перехват инструкции", "persistence_plant": "Внедрение персистентности", "jailbreak_assist": "Помощь в джейлбрейке" }
+    "payloadTypes": { "tool_misuse": "Злоупотребление инструментом", "context_poison": "Отравление контекста", "role_override": "Переопределение роли", "exfiltration": "Эксфильтрация", "instruction_hijack": "Перехват инструкции", "persistence_plant": "Внедрение персистентности", "jailbreak_assist": "Помощь в джейлбрейке" },
+    "detail": {
+      "description": "Описание полезной нагрузки",
+      "reasoning": "Криминалистическое обоснование",
+      "matches": "Криминалистические совпадения",
+      "at_line": "Строка",
+      "pattern": "Паттерн",
+      "triggered_malicious": "Активировано: вредоносное",
+      "triggered_suspicious": "Активировано: подозрительное",
+      "what_payload_does": "Что делает полезная нагрузка",
+      "evidence": "Доказательства",
+      "risk_implication": "Последствие риска",
+      "what_agent_should_have_done": "Ожидаемое поведение"
+    }
   },
   "report": {
     "title": "Экспорт отчёта", "export": "Экспорт", "selectLevel": "Выберите уровень детализации",

@@ -186,7 +186,20 @@
     "title": "Hallazgos detectados", "noFindings": "Sin hallazgos críticos", "noFindingsDesc": "No se detectaron respuestas maliciosas o sospechosas",
     "columns": { "type": "Tipo", "severity": "Severidad", "classification": "Clasificación", "indicators": "Indicadores", "node": "Nodo" },
     "classifications": { "malicious": "Maliciosa", "suspicious": "Sospechosa", "benign": "Benigna", "unknown": "Desconocida" },
-    "payloadTypes": { "tool_misuse": "Uso incorrecto de herramienta", "context_poison": "Envenenamiento de contexto", "role_override": "Anulación de rol", "exfiltration": "Exfiltración", "instruction_hijack": "Secuestro de instrucción", "persistence_plant": "Planta de persistencia", "jailbreak_assist": "Asistencia de jailbreak" }
+    "payloadTypes": { "tool_misuse": "Uso incorrecto de herramienta", "context_poison": "Envenenamiento de contexto", "role_override": "Anulación de rol", "exfiltration": "Exfiltración", "instruction_hijack": "Secuestro de instrucción", "persistence_plant": "Planta de persistencia", "jailbreak_assist": "Asistencia de jailbreak" },
+    "detail": {
+      "description": "Descripción del payload",
+      "reasoning": "Razonamiento forense",
+      "matches": "Coincidencias forenses",
+      "at_line": "Línea",
+      "pattern": "Patrón",
+      "triggered_malicious": "Activado: malicioso",
+      "triggered_suspicious": "Activado: sospechoso",
+      "what_payload_does": "Qué hace el payload",
+      "evidence": "Evidencia",
+      "risk_implication": "Implicación de riesgo",
+      "what_agent_should_have_done": "Comportamiento esperado"
+    }
   },
   "report": {
     "title": "Exportar informe", "export": "Exportar", "selectLevel": "Selecciona el nivel de detalle",

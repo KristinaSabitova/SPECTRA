@@ -67,16 +67,18 @@ function RiskGauge({ score, level }: { score: number; level: RiskLevel }) {
 
 function ScoreBar({ value, color, weight }: { value: number; color: string; weight: number }) {
   return (
-    <div className="risk-bar-track">
-      <div
-        className="risk-bar-fill"
-        style={{
-          width: `${value}%`,
-          background: color,
-          opacity: 0.1 + weight * 0.9,
-          transition: 'width 0.6s ease',
-        }}
-      />
+    <div className="risk-bar-wrap">
+      <div className="risk-bar-track">
+        <div
+          className="risk-bar-fill"
+          style={{
+            width: `${value}%`,
+            background: color,
+            opacity: 0.1 + weight * 0.9,
+            transition: 'width 0.6s ease',
+          }}
+        />
+      </div>
       <span className="risk-bar-value">{Math.round(value)}</span>
     </div>
   )
