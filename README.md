@@ -126,6 +126,12 @@ Los ataques de inyección de prompt indirecta son silenciosos, difíciles de det
 
 Ver [SECURITY.md](SECURITY.md) para política de divulgación responsable.
 
+<img width="1416" height="444" alt="Captura de pantalla 2026-06-04 a las 0 27 57" src="https://github.com/user-attachments/assets/a07a6c14-1223-4f26-b332-4e118f47e186" />
+
+<img width="1598" height="961" alt="Captura de pantalla 2026-06-04 a las 0 28 45" src="https://github.com/user-attachments/assets/8a9e9c8c-59f5-4773-b0f6-7b0b093666e2" />
+
+<img width="1617" height="544" alt="Captura de pantalla 2026-06-04 a las 0 28 57" src="https://github.com/user-attachments/assets/08539aff-1ab5-44b1-b906-58fd3e709c88" />
+
 ---
 
 *Desarrollado por [Kristina Sabitova](https://github.com/KristinaSabitova)*
