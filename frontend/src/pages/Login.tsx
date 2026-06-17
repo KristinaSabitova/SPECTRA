@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth'
 import { authApi } from '@/services/api'
@@ -134,6 +134,17 @@ export default function Login() {
               {loading ? t('auth.loggingIn') : t('auth.loginButton')}
             </Button>
           </form>
+        )}
+
+        {/* Links de acceso secundario */}
+        {step === 'credentials' && (
+          <div style={{ marginTop: 4, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Link to="/forgot-password" style={{ fontSize: 13, color: 'var(--primary)', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</Link>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              ¿No tienes cuenta?{' '}
+              <Link to="/register" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Regístrate</Link>
+            </span>
+          </div>
         )}
 
         {/* ── Paso 2: TOTP ── */}

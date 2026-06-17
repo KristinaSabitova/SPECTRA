@@ -5,6 +5,8 @@ import { setupApi } from '@/services/api'
 import AppLayout from '@/components/layout/AppLayout'
 import Spinner from '@/components/common/Spinner'
 import Login from '@/pages/Login'
+import Register from '@/pages/Register'
+import ForgotPassword from '@/pages/ForgotPassword'
 import Setup from '@/pages/Setup'
 import Dashboard from '@/pages/Dashboard'
 import Pipelines from '@/pages/Pipelines'
@@ -65,6 +67,8 @@ export default function App() {
       <Routes>
         {/* Public routes — no auth required */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/scan" element={<Scan />} />
 
         <Route

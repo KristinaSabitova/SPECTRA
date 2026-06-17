@@ -25,6 +25,7 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 from app.services.session_service import SessionService
+from app.config import settings
 
 router = APIRouter()
 _log = logging.getLogger("spectra.auth")
@@ -81,6 +82,8 @@ async def register(
     ip = get_client_ip(request)
     # Rate limit: 5 registration attempts per IP per minute
     await auth_limiter.check(f"register:{ip}")
+    if settings.invite_code and body.invite_code != settings.invite_code:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Código de invitación inválido")
     user = await _svc(db).register(
         email=body.email,
         username=body.username,

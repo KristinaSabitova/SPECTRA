@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Data retention
     data_retention_days: int = 90
 
+    # Invite code required for self-registration
+    invite_code: str = ""
+
     # Optional Anthropic API key for SEMANTIC_PARAPHRASE mutation
     anthropic_api_key: str = ""
 

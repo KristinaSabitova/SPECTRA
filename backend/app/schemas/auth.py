@@ -18,6 +18,7 @@ class RegisterRequest(BaseModel):
     email: Annotated[EmailStr, Field(max_length=255)]
     username: Annotated[str, Field(min_length=3, max_length=50)]
     password: Annotated[str, Field(min_length=12, max_length=128)]
+    invite_code: Annotated[str, Field(max_length=128)] = ""
     role: UserRole = UserRole.junior
 
     @field_validator("username")
@@ -144,6 +145,7 @@ class ChangePasswordRequest(BaseModel):
 class CreateUserRequest(BaseModel):
     email: Annotated[EmailStr, Field(max_length=255)]
     username: Annotated[str, Field(min_length=3, max_length=50)]
+    invite_code: Annotated[str, Field(max_length=128)] = ""
     role: UserRole = UserRole.junior
 
     @field_validator("username")
