@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Printer, RotateCcw } from 'lucide-react'
+import { Printer, RotateCcw, ExternalLink } from 'lucide-react'
 import { analyzeConfig, type ConfigInput, type Finding, type Platform, type Tool } from '@/utils/configAuditAnalyzer'
 import type { AnalysisResult } from '@/utils/configAuditAnalyzer'
 import Button from '@/components/common/Button'
+import { engineApi } from '@/services/api'
 
 const PLATFORMS: Platform[] = ['claude', 'chatgpt', 'copilot', 'other']
 const TOOLS: Tool[]          = ['drive', 'notion', 'email', 'calendar', 'github', 'database', 'other']
@@ -101,8 +103,14 @@ function FindingCard({ finding }: { finding: Finding }) {
 // ── Report ────────────────────────────────────────────────────────────
 
 function AuditReport({
-  result, input, onReset,
-}: { result: AnalysisResult; input: ConfigInput; onReset: () => void }) {
+  result, input, onReset, runId, liveTestError,
+}: {
+  result: AnalysisResult
+  input: ConfigInput
+  onReset: () => void
+  runId: string | null
+  liveTestError: string | null
+}) {
   const { t } = useTranslation()
   const riskColor = RISK_COLOR[result.riskLevel]
 
@@ -126,6 +134,12 @@ function AuditReport({
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {runId && (
+            <Link to={`/audits/${runId}`} className="btn btn-secondary btn-sm">
+              <ExternalLink size={14} />
+              {t('configAudit.report.viewLiveRun')}
+            </Link>
+          )}
           <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>
             <Printer size={14} />
             {t('configAudit.report.print')}
@@ -136,6 +150,30 @@ function AuditReport({
           </button>
         </div>
       </div>
+
+      {/* live test status */}
+      {runId && (
+        <div style={{
+          padding: '10px 16px', marginBottom: 16, borderRadius: 'var(--r-md)',
+          background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)',
+          fontSize: 13, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <ExternalLink size={14} />
+          {t('configAudit.report.liveRunStarted')}{' '}
+          <Link to={`/audits/${runId}`} style={{ color: 'var(--accent)', fontWeight: 600 }}>
+            {t('configAudit.report.viewLiveRun')}
+          </Link>
+        </div>
+      )}
+      {liveTestError && (
+        <div style={{
+          padding: '10px 16px', marginBottom: 16, borderRadius: 'var(--r-md)',
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
+          fontSize: 13, color: '#ef4444',
+        }}>
+          {t('configAudit.report.liveTestError')}: {liveTestError}
+        </div>
+      )}
 
       {/* score summary */}
       <div className="table-wrapper" style={{ padding: '20px 24px', marginBottom: 20 }}>
@@ -200,10 +238,16 @@ function AuditReport({
 
 // ── Form ──────────────────────────────────────────────────────────────
 
-function AuditForm({ onResult }: { onResult: (r: AnalysisResult, i: ConfigInput) => void }) {
+function AuditForm({
+  onResult,
+}: {
+  onResult: (r: AnalysisResult, i: ConfigInput, runId: string | null, liveErr: string | null) => void
+}) {
   const { t } = useTranslation()
 
   const [platform,     setPlatform]     = useState<Platform>('chatgpt')
+  const [agentUrl,     setAgentUrl]     = useState('')
+  const [agentApiKey,  setAgentApiKey]  = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [context,      setContext]      = useState('')
   const [tools,        setTools]        = useState<Tool[]>([])
@@ -215,16 +259,42 @@ function AuditForm({ onResult }: { onResult: (r: AnalysisResult, i: ConfigInput)
     setTools(prev => prev.includes(tool) ? prev.filter(t => t !== tool) : [...prev, tool])
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!systemPrompt.trim()) { setError(t('configAudit.form.errors.promptRequired')); return }
     setError('')
     setAnalyzing(true)
     const input: ConfigInput = { platform, systemPrompt, context, tools, userCount }
+
+    // Optional: trigger a live engine run if the user provided an agent URL
+    let runId: string | null = null
+    let liveErr: string | null = null
+    if (agentUrl.trim()) {
+      try {
+        const authHeaders: Record<string, string> = {}
+        if (agentApiKey.trim()) {
+          authHeaders['Authorization'] = `Bearer ${agentApiKey.trim()}`
+        }
+        const res = await engineApi.createRun({
+          target_url: agentUrl.trim(),
+          auth_headers: authHeaders,
+          mutation_strategies: ['none'],
+          check_persistence: false,
+          max_payloads: 0,
+        })
+        runId = res.data.id
+      } catch (err: unknown) {
+        liveErr = (err as { response?: { data?: { detail?: string } } })
+          ?.response?.data?.detail ?? t('configAudit.form.errors.liveTestFailed')
+      }
+    }
+
+    // Run static analysis (instant) — delay is skipped if we already waited for the API
+    const delay = agentUrl.trim() ? 0 : 700
     setTimeout(() => {
-      onResult(analyzeConfig(input), input)
+      onResult(analyzeConfig(input), input, runId, liveErr)
       setAnalyzing(false)
-    }, 700)
+    }, delay)
   }
 
   return (
@@ -258,6 +328,43 @@ function AuditForm({ onResult }: { onResult: (r: AnalysisResult, i: ConfigInput)
                 <option key={p} value={p}>{t(`configAudit.form.platforms.${p}`)}</option>
               ))}
             </select>
+          </div>
+
+          {/* agent URL + API key — optional live test */}
+          <div style={{
+            border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
+            padding: '14px 16px', marginBottom: 16,
+            background: 'rgba(99,102,241,0.03)',
+          }}>
+            <p style={{
+              fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: 0.6, color: 'var(--accent)', marginBottom: 12,
+            }}>
+              {t('configAudit.form.agentSection')}
+            </p>
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label">{t('configAudit.form.agentUrl')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={agentUrl}
+                onChange={e => setAgentUrl(e.target.value)}
+                placeholder={t('configAudit.form.agentUrlPlaceholder')}
+              />
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                {t('configAudit.form.agentUrlHint')}
+              </p>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">{t('configAudit.form.agentApiKey')}</label>
+              <input
+                type="password"
+                className="form-input"
+                value={agentApiKey}
+                onChange={e => setAgentApiKey(e.target.value)}
+                placeholder={t('configAudit.form.agentApiKeyPlaceholder')}
+              />
+            </div>
           </div>
 
           {/* system prompt */}
@@ -338,22 +445,36 @@ function AuditForm({ onResult }: { onResult: (r: AnalysisResult, i: ConfigInput)
 // ── Page ──────────────────────────────────────────────────────────────
 
 export default function ConfigAudit() {
-  const [result, setResult] = useState<AnalysisResult | null>(null)
-  const [input,  setInput]  = useState<ConfigInput | null>(null)
+  const [result,       setResult]       = useState<AnalysisResult | null>(null)
+  const [input,        setInput]        = useState<ConfigInput | null>(null)
+  const [runId,        setRunId]        = useState<string | null>(null)
+  const [liveTestError, setLiveTestError] = useState<string | null>(null)
 
-  function handleResult(r: AnalysisResult, i: ConfigInput) {
+  function handleResult(r: AnalysisResult, i: ConfigInput, rid: string | null, liveErr: string | null) {
     setResult(r)
     setInput(i)
+    setRunId(rid)
+    setLiveTestError(liveErr)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleReset() {
     setResult(null)
     setInput(null)
+    setRunId(null)
+    setLiveTestError(null)
   }
 
   if (result && input) {
-    return <AuditReport result={result} input={input} onReset={handleReset} />
+    return (
+      <AuditReport
+        result={result}
+        input={input}
+        onReset={handleReset}
+        runId={runId}
+        liveTestError={liveTestError}
+      />
+    )
   }
   return <AuditForm onResult={handleResult} />
 }

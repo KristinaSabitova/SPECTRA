@@ -229,6 +229,12 @@
       "title": "Данные конфигурации",
       "platform": "Используемая платформа",
       "platforms": { "claude": "Claude (Anthropic)", "chatgpt": "ChatGPT (OpenAI)", "copilot": "Copilot (Microsoft)", "other": "Другая платформа" },
+      "agentSection": "Живой динамический тест (необязательно)",
+      "agentUrl": "URL агента",
+      "agentUrlPlaceholder": "https://api.company.com/v1/agent/invoke",
+      "agentUrlHint": "Если указан, SPECTRA отправит реальные payload-ы агенту в рамках аудита",
+      "agentApiKey": "API-ключ агента",
+      "agentApiKeyPlaceholder": "sk-...",
       "systemPrompt": "Системный промпт",
       "systemPromptPlaceholder": "Вставьте полный системный промпт компании…",
       "context": "Загруженные документы и контекст",
@@ -239,7 +245,7 @@
       "userCountPlaceholder": "Напр.: 25",
       "submit": "Проанализировать конфигурацию",
       "submitting": "Анализ…",
-      "errors": { "promptRequired": "Системный промпт обязателен для анализа" }
+      "errors": { "promptRequired": "Системный промпт обязателен для анализа", "liveTestFailed": "Не удалось запустить живой тест" }
     },
     "report": {
       "title": "Отчёт о конфигурации ИИ",
@@ -254,7 +260,10 @@
       "print": "Экспорт PDF",
       "newAudit": "Новый аудит",
       "evidence": "Обнаруженное доказательство",
-      "recommendation": "Рекомендация"
+      "recommendation": "Рекомендация",
+      "viewLiveRun": "Смотреть живой тест",
+      "liveRunStarted": "Живой тест запущен.",
+      "liveTestError": "Ошибка живого теста"
     },
     "severity": { "critical": "Критический", "high": "Высокий", "medium": "Средний" },
     "riskLevel": { "low": "Низкий риск", "medium": "Средний риск", "high": "Высокий риск", "critical": "Критический риск" },

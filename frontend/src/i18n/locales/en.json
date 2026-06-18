@@ -229,6 +229,12 @@
       "title": "Configuration details",
       "platform": "Platform used",
       "platforms": { "claude": "Claude (Anthropic)", "chatgpt": "ChatGPT (OpenAI)", "copilot": "Copilot (Microsoft)", "other": "Other platform" },
+      "agentSection": "Live dynamic test (optional)",
+      "agentUrl": "Agent URL",
+      "agentUrlPlaceholder": "https://api.company.com/v1/agent/invoke",
+      "agentUrlHint": "If provided, SPECTRA will send real payloads to your agent as part of the audit",
+      "agentApiKey": "Agent API key",
+      "agentApiKeyPlaceholder": "sk-...",
       "systemPrompt": "System prompt",
       "systemPromptPlaceholder": "Paste the company's full system prompt here…",
       "context": "Loaded documents and context",
@@ -239,7 +245,7 @@
       "userCountPlaceholder": "e.g. 25",
       "submit": "Analyse configuration",
       "submitting": "Analysing…",
-      "errors": { "promptRequired": "System prompt is required for analysis" }
+      "errors": { "promptRequired": "System prompt is required for analysis", "liveTestFailed": "Could not start live dynamic test" }
     },
     "report": {
       "title": "AI configuration report",
@@ -254,7 +260,10 @@
       "print": "Export PDF",
       "newAudit": "New audit",
       "evidence": "Detected evidence",
-      "recommendation": "Recommendation"
+      "recommendation": "Recommendation",
+      "viewLiveRun": "View live test",
+      "liveRunStarted": "Live test started.",
+      "liveTestError": "Live test error"
     },
     "severity": { "critical": "Critical", "high": "High", "medium": "Medium" },
     "riskLevel": { "low": "Low risk", "medium": "Medium risk", "high": "High risk", "critical": "Critical risk" },

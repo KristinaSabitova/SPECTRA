@@ -229,6 +229,12 @@
       "title": "Datos de configuración",
       "platform": "Plataforma utilizada",
       "platforms": { "claude": "Claude (Anthropic)", "chatgpt": "ChatGPT (OpenAI)", "copilot": "Copilot (Microsoft)", "other": "Otra plataforma" },
+      "agentSection": "Test dinámico en vivo (opcional)",
+      "agentUrl": "URL del agente",
+      "agentUrlPlaceholder": "https://api.empresa.com/v1/agent/invoke",
+      "agentUrlHint": "Si se especifica, SPECTRA enviará payloads reales al agente para completar el análisis",
+      "agentApiKey": "API key del agente",
+      "agentApiKeyPlaceholder": "sk-...",
       "systemPrompt": "System prompt",
       "systemPromptPlaceholder": "Pega aquí el system prompt completo de la empresa…",
       "context": "Documentos y contexto cargado",
@@ -239,7 +245,7 @@
       "userCountPlaceholder": "Ej: 25",
       "submit": "Analizar configuración",
       "submitting": "Analizando…",
-      "errors": { "promptRequired": "El system prompt es obligatorio para el análisis" }
+      "errors": { "promptRequired": "El system prompt es obligatorio para el análisis", "liveTestFailed": "No se pudo iniciar el test dinámico" }
     },
     "report": {
       "title": "Informe de configuración IA",
@@ -254,7 +260,10 @@
       "print": "Exportar PDF",
       "newAudit": "Nueva auditoría",
       "evidence": "Evidencia detectada",
-      "recommendation": "Recomendación"
+      "recommendation": "Recomendación",
+      "viewLiveRun": "Ver test dinámico",
+      "liveRunStarted": "Test dinámico iniciado.",
+      "liveTestError": "Error en test dinámico"
     },
     "severity": { "critical": "Crítico", "high": "Alto", "medium": "Medio" },
     "riskLevel": { "low": "Riesgo bajo", "medium": "Riesgo medio", "high": "Riesgo alto", "critical": "Riesgo crítico" },
