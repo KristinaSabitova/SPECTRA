@@ -89,8 +89,8 @@ def get_pipelines(client: httpx.Client, token: str) -> list[dict]:
 
 def main() -> None:
     run_id = uuid.uuid4().hex[:8]
-    email_a    = f"empresa_a_{run_id}@test.local"
-    email_b    = f"empresa_b_{run_id}@test.local"
+    email_a    = f"empresa_a_{run_id}@example.com"
+    email_b    = f"empresa_b_{run_id}@example.com"
     username_a = f"empresa_a_{run_id}"
     username_b = f"empresa_b_{run_id}"
 
