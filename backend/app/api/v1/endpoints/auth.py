@@ -1,8 +1,9 @@
-import hmac
 import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, field_validator
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_client_ip, get_current_user, require_roles
@@ -11,6 +12,7 @@ from jwt.exceptions import InvalidTokenError
 
 from app.core.security import decode_token
 from app.db.database import get_db
+from app.models.pipeline import Pipeline
 from app.models.user import User, UserRole
 from app.schemas.auth import (
     AuditLogEntry,
@@ -31,6 +33,46 @@ from app.config import settings
 
 router = APIRouter()
 _log = logging.getLogger("spectra.auth")
+
+# ── Demo pipeline seed ────────────────────────────────────────────────────────
+# Change these via DEMO_RAILWAY_URL / DEMO_LAB_URL env vars (set in .env).
+_DEMO_RAILWAY_URL: str = settings.demo_railway_url
+_DEMO_LAB_URL: str = settings.demo_lab_url
+
+_DEMO_PIPELINES = [
+    {
+        "name": "Demo — Agente resistente (Railway)",
+        "description": "Agente de referencia que resiste inyección indirecta. Úsalo como baseline.",
+        "endpoint_url": _DEMO_RAILWAY_URL or None,
+        "framework": "langchain",
+    },
+    {
+        "name": "Demo — Lab Agent (vulnerable)",
+        "description": "Agente de laboratorio para demostrar hallazgos de indirect prompt injection.",
+        "endpoint_url": _DEMO_LAB_URL or None,
+        "framework": "langchain",
+    },
+]
+
+
+async def _seed_demo_pipelines(db: AsyncSession, user_id: str) -> None:
+    try:
+        existing = await db.execute(
+            select(Pipeline).where(Pipeline.owner_id == user_id).limit(1)
+        )
+        if existing.scalar_one_or_none():
+            return
+        seeded = 0
+        for spec in _DEMO_PIPELINES:
+            if not spec["endpoint_url"]:
+                _log.warning("Skipping demo pipeline %r: endpoint_url not configured", spec["name"])
+                continue
+            db.add(Pipeline(id=str(uuid.uuid4()), owner_id=user_id, **spec))
+            seeded += 1
+        if seeded:
+            await db.commit()
+    except Exception:
+        _log.exception("Failed to seed demo pipelines for user %s", user_id)
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
@@ -104,14 +146,26 @@ async def register(
     ip = get_client_ip(request)
     # Rate limit: 5 registration attempts per IP per minute
     await auth_limiter.check(f"register:{ip}")
-    if settings.invite_code and not hmac.compare_digest(body.invite_code, settings.invite_code):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Código de invitación inválido")
+    code_map = settings.invite_code_map
+    if code_map:
+        granted_role_str = code_map.get(body.invite_code)
+        if granted_role_str is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Código de invitación inválido")
+        try:
+            role = UserRole(granted_role_str)
+        except ValueError:
+            _log.error("INVITE_CODES config contains unknown role %r", granted_role_str)
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Server configuration error")
+    else:
+        role = UserRole.junior
+
     user = await _svc(db).register(
         email=body.email,
         username=body.username,
         password=body.password,
-        role=UserRole.junior,
+        role=role,
     )
+    await _seed_demo_pipelines(db, user.id)
     return UserResponse.model_validate(user)
 
 

@@ -12,6 +12,7 @@ class UserRole(str, Enum):
     admin = "admin"
     senior = "senior"
     junior = "junior"
+    trial = "trial"
 
 
 class User(Base):

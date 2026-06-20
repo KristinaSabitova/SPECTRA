@@ -44,8 +44,32 @@ class Settings(BaseSettings):
     # Data retention
     data_retention_days: int = 90
 
-    # Invite code required for self-registration
-    invite_code: str = ""
+    # Invite codes — CODE:ROLE pairs, comma-separated.
+    # Each code grants the role on the right when used at registration.
+    # Example: INVITE_CODES=TalentDay2026:trial,BoardingPass:senior
+    # Empty = open registration (role defaults to junior).
+    # NOTE: admin and senior roles are blocked by auth_service even via invite;
+    #       only junior/trial can be granted this way.
+    invite_codes: str = ""
+
+    @property
+    def invite_code_map(self) -> dict[str, str]:
+        raw = self.invite_codes.strip()
+        if not raw:
+            return {}
+        result: dict[str, str] = {}
+        for entry in raw.split(","):
+            entry = entry.strip()
+            if ":" not in entry:
+                continue
+            code, role = entry.split(":", 1)
+            result[code.strip()] = role.strip()
+        return result
+
+    # Demo pipelines seeded on every new registration (set in .env)
+    # DEMO_RAILWAY_URL must point to your Railway-hosted agent invoke endpoint
+    demo_railway_url: str = ""
+    demo_lab_url: str = "https://spectra.ksabitova.dev/lab-agent/invoke"
 
     # Optional Anthropic API key for SEMANTIC_PARAPHRASE mutation
     anthropic_api_key: str = ""

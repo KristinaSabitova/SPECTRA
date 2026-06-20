@@ -12,7 +12,7 @@ from app.core.dependencies import get_current_user, require_roles
 from app.db.database import get_db
 from app.models.audit import Audit
 from app.models.pipeline import Pipeline
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 
 router = APIRouter()
 
@@ -36,21 +36,31 @@ class PipelineResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("/", response_model=list[PipelineResponse], dependencies=[Depends(get_current_user)])
-async def list_pipelines(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Pipeline).order_by(Pipeline.created_at.desc()))
+@router.get("/", response_model=list[PipelineResponse])
+async def list_pipelines(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = select(Pipeline).order_by(Pipeline.created_at.desc())
+    if UserRole(current_user.role) != UserRole.admin:
+        q = q.where(Pipeline.owner_id == current_user.id)
+    result = await db.execute(q)
     return result.scalars().all()
 
 
-@router.post("/", response_model=PipelineResponse, status_code=status.HTTP_201_CREATED,
-             dependencies=[Depends(require_roles(UserRole.admin, UserRole.senior))])
-async def create_pipeline(body: CreatePipelineRequest, db: AsyncSession = Depends(get_db)):
+@router.post("/", response_model=PipelineResponse, status_code=status.HTTP_201_CREATED)
+async def create_pipeline(
+    body: CreatePipelineRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.admin, UserRole.senior, UserRole.trial)),
+):
     pipeline = Pipeline(
         id=str(uuid.uuid4()),
         name=body.name.strip(),
         description=body.description,
         endpoint_url=body.endpoint_url.strip(),
         framework=body.framework,
+        owner_id=current_user.id,
     )
     db.add(pipeline)
     await db.commit()
