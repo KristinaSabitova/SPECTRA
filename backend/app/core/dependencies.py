@@ -11,7 +11,7 @@ from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.services.session_service import SessionService
 
-_bearer = HTTPBearer()
+_bearer = HTTPBearer(auto_error=False)
 
 
 def get_client_ip(request: Request) -> str:
@@ -22,9 +22,15 @@ def get_client_ip(request: Request) -> str:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    if not credentials:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = credentials.credentials
     try:
         payload = decode_token(token)
