@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -7,9 +6,7 @@ from typing import Any
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from jose import jwt
+import jwt
 
 from app.config import settings
 
@@ -84,14 +81,7 @@ def _sha256(value: str) -> str:
 
 # Fernet para cifrar el secreto TOTP en reposo
 def _fernet() -> Fernet:
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=b"spectra-totp-v1",
-        iterations=100_000,
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(settings.jwt_secret_key.encode()))
-    return Fernet(key)
+    return Fernet(settings.totp_encryption_key.encode())
 
 
 def encrypt_secret(value: str) -> str:

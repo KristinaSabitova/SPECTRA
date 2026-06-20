@@ -30,6 +30,9 @@ class User(Base):
     totp_secret_enc: Mapped[str | None] = mapped_column(String(512))  # cifrado con Fernet
     totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     backup_codes_hash: Mapped[list | None] = mapped_column(JSON)  # lista de hashes SHA-256
+    # Pending enrollment — cleared once confirmed or after TTL
+    totp_pending_secret_enc: Mapped[str | None] = mapped_column(String(512))
+    totp_pending_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

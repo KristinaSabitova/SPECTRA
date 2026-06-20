@@ -5,43 +5,53 @@ import type {
   UserResponse, TOTPSetupResponse, CreateUserResponse, UserRole,
   ConfigScanResponse,
 } from '@/types'
+import { useAuthStore } from '@/store/auth'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 })
 
 api.interceptors.request.use((config) => {
-  const raw = localStorage.getItem('spectra-auth')
-  if (raw) {
-    try {
-      const state = JSON.parse(raw)
-      const token = state?.state?.accessToken
-      if (token) config.headers.Authorization = `Bearer ${token}`
-    } catch { /* no-op */ }
-  }
+  const token = useAuthStore.getState().accessToken
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
+let _refreshing: Promise<string> | null = null
+
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
-      localStorage.removeItem('spectra-auth')
-      window.location.replace('/login')
+  async (error) => {
+    const original = error.config
+    if (error.response?.status === 401 && !original._retry && !window.location.pathname.startsWith('/login')) {
+      original._retry = true
+      try {
+        if (!_refreshing) {
+          _refreshing = api.post<TokenResponse>('/auth/refresh')
+            .then(({ data }) => {
+              useAuthStore.setState({ accessToken: data.access_token })
+              return data.access_token
+            })
+            .finally(() => { _refreshing = null })
+        }
+        const token = await _refreshing
+        original.headers.Authorization = `Bearer ${token}`
+        return api(original)
+      } catch {
+        useAuthStore.getState().clearAuth()
+        window.location.replace('/login')
+      }
     }
     return Promise.reject(error)
   }
 )
 
 function getToken(): string {
-  try {
-    const raw = localStorage.getItem('spectra-auth')
-    if (!raw) return ''
-    return JSON.parse(raw)?.state?.accessToken ?? ''
-  } catch { return '' }
+  return useAuthStore.getState().accessToken ?? ''
 }
 
 export const setupApi = {
@@ -55,15 +65,15 @@ export const authApi = {
     api.post<LoginResponse>('/auth/login', body),
   verify2fa: (body: { temp_token: string; code: string }) =>
     api.post<LoginResponse>('/auth/login/2fa', body),
-  refresh: (body: { refresh_token: string }) =>
-    api.post<TokenResponse>('/auth/refresh', body),
+  refresh: () =>
+    api.post<TokenResponse>('/auth/refresh'),
   logout: () => api.post('/auth/logout'),
   logoutAll: () => api.post('/auth/logout/all'),
   me: () => api.get<UserResponse>('/auth/me'),
   changePassword: (body: { current_password: string; new_password: string }) =>
     api.put('/auth/me/password', body),
   setup2fa: () => api.post<TOTPSetupResponse>('/auth/2fa/setup'),
-  enable2fa: (body: { code: string; secret: string; backup_codes: string[] }) =>
+  enable2fa: (body: { code: string; backup_codes: string[] }) =>
     api.post('/auth/2fa/enable', body),
   disable2fa: (body: { code: string }) => api.delete('/auth/2fa', { data: body }),
 }

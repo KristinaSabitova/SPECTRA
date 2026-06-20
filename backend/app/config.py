@@ -5,12 +5,14 @@ from pydantic_settings import BaseSettings
 
 _DEFAULT_SECRET = "dev-secret-key-change-in-production"
 _DEFAULT_JWT = "dev-jwt-secret-change-in-production"
+# base64url(b"dev-totp-key-must-change-in-prod") — valid Fernet key, dev only
+_DEFAULT_TOTP_KEY = "ZGV2LXRvdHAta2V5LW11c3QtY2hhbmdlLWluLXByb2Q="
 
 
 class Settings(BaseSettings):
     app_env: str = "development"
     app_secret_key: str = _DEFAULT_SECRET
-    app_debug: bool = True
+    app_debug: bool = False
 
     # Set DATABASE_URL to use PostgreSQL in production:
     #   postgresql+asyncpg://user:pass@host:5432/dbname
@@ -30,6 +32,9 @@ class Settings(BaseSettings):
 
     # TOTP
     totp_issuer: str = "SPECTRA"
+    # Fernet key for encrypting TOTP secrets at rest.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    totp_encryption_key: str = _DEFAULT_TOTP_KEY
 
     # Usage limits (0 = unlimited)
     max_runs_per_day: int = 0
@@ -75,6 +80,10 @@ def validate_secrets() -> None:
     env = settings.app_env.lower()
     if env == "production":
         errors: list[str] = []
+        if settings.app_debug:
+            errors.append(
+                "APP_DEBUG is True in production. Set APP_DEBUG=false in your .env file."
+            )
         if settings.app_secret_key == _DEFAULT_SECRET or len(settings.app_secret_key) < 32:
             errors.append(
                 "APP_SECRET_KEY is the default value or shorter than 32 characters. "
@@ -84,6 +93,11 @@ def validate_secrets() -> None:
             errors.append(
                 "JWT_SECRET_KEY is the default value or shorter than 32 characters. "
                 "Set a strong random secret in your .env file."
+            )
+        if settings.totp_encryption_key == _DEFAULT_TOTP_KEY:
+            errors.append(
+                "TOTP_ENCRYPTION_KEY is the default dev value. "
+                "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
             )
         if errors:
             for msg in errors:

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import secrets
 import sys
 from pathlib import Path
 
@@ -85,10 +86,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Initialize SPECTRA database")
     parser.add_argument("--email",    default="admin@example.com")
     parser.add_argument("--username", default="admin")
-    parser.add_argument("--password", default="spectra-dev-2024")
+    parser.add_argument("--password", default=None)
     parser.add_argument("--reset",    action="store_true",
                         help="Drop and recreate all tables (destructive!)")
     args = parser.parse_args()
+
+    if args.password is None:
+        args.password = secrets.token_urlsafe(16)
+        print(f"Generated admin password: {args.password}")
 
     if args.reset:
         confirm = input("This will DELETE all data. Type 'yes' to continue: ")

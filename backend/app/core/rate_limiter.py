@@ -1,8 +1,13 @@
 """
 Rate limiter with exponential backoff for auth endpoints.
 
-Uses an in-memory sliding-window counter per IP.  In a multi-process deploy,
-replace _state with a Redis-backed store.
+⚠️  SECURITY LIMITATION — IN-MEMORY STORE, SINGLE-WORKER ONLY
+   This implementation stores state in process memory.  With multiple uvicorn
+   workers each process maintains its own counter, so an attacker can multiply
+   the effective limit by the number of workers.  The docker-compose deployment
+   is pinned to --workers 1 as a mitigation.
+   Production fix: replace _state with a Redis-backed store using slowapi +
+   redis.asyncio and restore --workers to the desired concurrency level.
 
 Limits:
   - 5 attempts per IP per 60 s on auth endpoints

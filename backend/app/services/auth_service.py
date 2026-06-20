@@ -1,8 +1,9 @@
 import secrets
 import string
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,8 @@ from app.core.security import (
     create_2fa_temp_token,
     create_access_token,
     decode_token,
+    decrypt_secret,
+    encrypt_secret,
     hash_refresh_token,
     hash_password,
     needs_rehash,
@@ -224,7 +227,7 @@ class AuthService:
             if payload.get("type") != "2fa_pending":
                 raise ValueError
             user_id: str = payload["sub"]
-        except (JWTError, KeyError, ValueError):
+        except (InvalidTokenError, KeyError, ValueError):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired 2FA token")
 
         user = await self._get_user_by_id(user_id)
@@ -307,18 +310,33 @@ class AuthService:
     async def setup_totp(self, user: User) -> dict:
         if user.totp_enabled:
             raise HTTPException(status.HTTP_409_CONFLICT, "2FA already enabled")
-        return self._totp_svc.generate_setup(user.email)
+        result = self._totp_svc.generate_setup(user.email)
+        user.totp_pending_secret_enc = encrypt_secret(result["secret"])
+        user.totp_pending_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        await self.db.commit()
+        return result
 
     async def enable_totp(
-        self, user: User, code: str, secret: str, backup_codes: list[str],
+        self, user: User, code: str, backup_codes: list[str],
         ip: str, user_agent: str | None
     ) -> None:
+        if not user.totp_pending_secret_enc or not user.totp_pending_expires_at:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "No pending 2FA setup. Call /2fa/setup first.")
+        if datetime.now(timezone.utc) > user.totp_pending_expires_at:
+            user.totp_pending_secret_enc = None
+            user.totp_pending_expires_at = None
+            await self.db.commit()
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "2FA setup expired. Call /2fa/setup again.")
+
         import pyotp
+        secret = decrypt_secret(user.totp_pending_secret_enc)
         if not pyotp.TOTP(secret).verify(code, valid_window=1):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
 
         codes_hash = self._totp_svc.hash_backup_codes(backup_codes)
         self._totp_svc.apply_setup(user, secret, codes_hash)
+        user.totp_pending_secret_enc = None
+        user.totp_pending_expires_at = None
         await self._log("2fa_enable", True, ip, user_agent, user_id=user.id)
         await self.db.commit()
 

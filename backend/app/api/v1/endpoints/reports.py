@@ -12,6 +12,7 @@ from app.db.database import get_db
 from app.models.audit import Audit
 from app.models.execution import ExecutionRun, RunStatus
 from app.models.pipeline import Pipeline
+from app.models.user import User, UserRole
 
 router = APIRouter()
 
@@ -41,27 +42,40 @@ def _make_item(run: ExecutionRun, audit_name: str | None, pipeline_name: str | N
     )
 
 
-@router.get("/", response_model=list[ReportListItem], dependencies=[Depends(get_current_user)])
-async def list_reports(db: AsyncSession = Depends(get_db)) -> list[ReportListItem]:
-    result = await db.execute(
+@router.get("/", response_model=list[ReportListItem])
+async def list_reports(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[ReportListItem]:
+    q = (
         select(ExecutionRun, Audit.name.label("audit_name"), Pipeline.name.label("pipeline_name"))
         .outerjoin(Audit,     ExecutionRun.audit_id     == Audit.id)
         .outerjoin(Pipeline,  ExecutionRun.pipeline_id  == Pipeline.id)
         .where(ExecutionRun.status == RunStatus.completed)
         .order_by(ExecutionRun.completed_at.desc())
     )
+    if UserRole(current_user.role) != UserRole.admin:
+        q = q.where(ExecutionRun.user_id == current_user.id)
+    result = await db.execute(q)
     return [_make_item(run, audit_name, pipeline_name) for run, audit_name, pipeline_name in result.all()]
 
 
-@router.get("/{report_id}", dependencies=[Depends(get_current_user)])
-async def get_report(report_id: str, db: AsyncSession = Depends(get_db)) -> ReportListItem:
-    result = await db.execute(
+@router.get("/{report_id}")
+async def get_report(
+    report_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ReportListItem:
+    q = (
         select(ExecutionRun, Audit.name.label("audit_name"), Pipeline.name.label("pipeline_name"))
         .outerjoin(Audit,     ExecutionRun.audit_id     == Audit.id)
         .outerjoin(Pipeline,  ExecutionRun.pipeline_id  == Pipeline.id)
         .where(ExecutionRun.id == report_id)
         .where(ExecutionRun.status == RunStatus.completed)
     )
+    if UserRole(current_user.role) != UserRole.admin:
+        q = q.where(ExecutionRun.user_id == current_user.id)
+    result = await db.execute(q)
     row = result.first()
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")

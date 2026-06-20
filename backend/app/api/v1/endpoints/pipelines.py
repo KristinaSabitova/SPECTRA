@@ -8,10 +8,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_roles
 from app.db.database import get_db
 from app.models.audit import Audit
 from app.models.pipeline import Pipeline
+from app.models.user import UserRole
 
 router = APIRouter()
 
@@ -42,7 +43,7 @@ async def list_pipelines(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/", response_model=PipelineResponse, status_code=status.HTTP_201_CREATED,
-             dependencies=[Depends(get_current_user)])
+             dependencies=[Depends(require_roles(UserRole.admin, UserRole.senior))])
 async def create_pipeline(body: CreatePipelineRequest, db: AsyncSession = Depends(get_db)):
     pipeline = Pipeline(
         id=str(uuid.uuid4()),
@@ -67,7 +68,7 @@ async def get_pipeline(pipeline_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/{pipeline_id}", status_code=status.HTTP_204_NO_CONTENT,
-               dependencies=[Depends(get_current_user)])
+               dependencies=[Depends(require_roles(UserRole.admin, UserRole.senior))])
 async def delete_pipeline(pipeline_id: str, db: AsyncSession = Depends(get_db)) -> Response:
     result = await db.execute(select(Pipeline).where(Pipeline.id == pipeline_id))
     pipeline = result.scalar_one_or_none()

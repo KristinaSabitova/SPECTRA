@@ -109,9 +109,6 @@ export default function Scan() {
     try {
       const { data } = await publicApi.configScan(prompt)
       setResult(data)
-      // Persist result in URL for sharing
-      const encoded = btoa(JSON.stringify({ prompt: prompt.slice(0, 200), result: data }))
-      window.history.replaceState(null, '', `?r=${encoded}`)
     } catch (e: any) {
       if (e.response?.status === 429) {
         setError('Rate limit exceeded. Try again in a few minutes.')

@@ -14,6 +14,7 @@ from app.db.database import get_db
 from app.models.audit import Audit, AuditStatus
 from app.models.execution import ExecutionRun, RunStatus
 from app.models.pipeline import Pipeline
+from app.models.user import User, UserRole
 
 router = APIRouter()
 
@@ -49,19 +50,29 @@ def _row_to_response(audit: Audit, pipeline_name: str) -> AuditResponse:
     )
 
 
-@router.get("/", response_model=list[AuditResponse], dependencies=[Depends(get_current_user)])
-async def list_audits(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+@router.get("/", response_model=list[AuditResponse])
+async def list_audits(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = (
         select(Audit, Pipeline.name.label("pipeline_name"))
         .outerjoin(Pipeline, Audit.pipeline_id == Pipeline.id)
+        .outerjoin(ExecutionRun, ExecutionRun.id == Audit.id)
         .order_by(Audit.created_at.desc())
     )
+    if UserRole(current_user.role) != UserRole.admin:
+        q = q.where(ExecutionRun.user_id == current_user.id)
+    result = await db.execute(q)
     return [_row_to_response(audit, pipeline_name or "Unknown") for audit, pipeline_name in result.all()]
 
 
-@router.post("/", response_model=AuditResponse, status_code=status.HTTP_201_CREATED,
-             dependencies=[Depends(get_current_user)])
-async def create_audit(body: CreateAuditRequest, db: AsyncSession = Depends(get_db)):
+@router.post("/", response_model=AuditResponse, status_code=status.HTTP_201_CREATED)
+async def create_audit(
+    body: CreateAuditRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     pipeline_result = await db.execute(select(Pipeline).where(Pipeline.id == body.pipeline_id))
     pipeline = pipeline_result.scalar_one_or_none()
     if not pipeline:
@@ -83,6 +94,7 @@ async def create_audit(body: CreateAuditRequest, db: AsyncSession = Depends(get_
         audit_id=audit_id,
         pipeline_id=body.pipeline_id,
         target_url=pipeline.endpoint_url,
+        user_id=current_user.id,
         status=RunStatus.queued,
         config={
             "mutation_strategies": ["none"],
@@ -150,13 +162,21 @@ async def _run_audit_task(audit_id: str, target_url: str) -> None:
                 )
 
 
-@router.get("/{audit_id}", response_model=AuditResponse, dependencies=[Depends(get_current_user)])
-async def get_audit(audit_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+@router.get("/{audit_id}", response_model=AuditResponse)
+async def get_audit(
+    audit_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = (
         select(Audit, Pipeline.name.label("pipeline_name"))
         .outerjoin(Pipeline, Audit.pipeline_id == Pipeline.id)
+        .outerjoin(ExecutionRun, ExecutionRun.id == Audit.id)
         .where(Audit.id == audit_id)
     )
+    if UserRole(current_user.role) != UserRole.admin:
+        q = q.where(ExecutionRun.user_id == current_user.id)
+    result = await db.execute(q)
     row = result.first()
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
@@ -164,9 +184,12 @@ async def get_audit(audit_id: str, db: AsyncSession = Depends(get_db)):
     return _row_to_response(audit, pipeline_name or "Unknown")
 
 
-@router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT,
-               dependencies=[Depends(get_current_user)])
-async def delete_audit(audit_id: str, db: AsyncSession = Depends(get_db)) -> Response:
+@router.delete("/{audit_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_audit(
+    audit_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
     result = await db.execute(select(Audit).where(Audit.id == audit_id))
     audit = result.scalar_one_or_none()
     if not audit:
@@ -175,6 +198,8 @@ async def delete_audit(audit_id: str, db: AsyncSession = Depends(get_db)) -> Res
     run_result = await db.execute(select(ExecutionRun).where(ExecutionRun.id == audit_id))
     run = run_result.scalar_one_or_none()
     if run:
+        if UserRole(current_user.role) != UserRole.admin and run.user_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit not found")
         await db.delete(run)
     await db.delete(audit)
     await db.commit()

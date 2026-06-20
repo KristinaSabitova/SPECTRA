@@ -7,7 +7,6 @@ const STORAGE_KEY = 'spectra-auth'
 interface AuthState {
   user: UserResponse | null
   accessToken: string | null
-  refreshToken: string | null
   isAuthenticated: boolean
   mustChangePassword: boolean
   setAuth: (user: UserResponse, tokens: TokenResponse) => void
@@ -21,7 +20,6 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
       mustChangePassword: false,
 
@@ -29,7 +27,6 @@ export const useAuthStore = create<AuthState>()(
         set({
           user,
           accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
           isAuthenticated: true,
         }),
 
@@ -37,25 +34,19 @@ export const useAuthStore = create<AuthState>()(
 
       setMustChangePassword: (v) => set({ mustChangePassword: v }),
 
-      clearAuth: () => {
+      clearAuth: () =>
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
           mustChangePassword: false,
-        })
-        // Remove persisted key so no token remnants survive between sessions.
-        // Called after set() because persist middleware writes synchronously on set.
-        localStorage.removeItem(STORAGE_KEY)
-      },
+        }),
     }),
     {
       name: STORAGE_KEY,
+      // accessToken intentionally excluded — lives in memory only, never in localStorage
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
         mustChangePassword: state.mustChangePassword,
       }),

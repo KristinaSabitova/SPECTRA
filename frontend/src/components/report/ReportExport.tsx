@@ -212,6 +212,10 @@ export default function ReportExport({ run, events, onClose }: Props) {
   const printRef = useRef<HTMLDivElement>(null)
   const score = calculateRiskScore(run, events)
 
+  function escapeHtml(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  }
+
   function handlePrint() {
     if (!printRef.current) return
     const win = window.open('', '_blank')
@@ -221,7 +225,7 @@ export default function ReportExport({ run, events, onClose }: Props) {
       <html>
       <head>
         <meta charset="utf-8">
-        <title>SPECTRA Report – ${run.target_url}</title>
+        <title>SPECTRA Report – ${escapeHtml(run.target_url)}</title>
         <style>
           body { font-family: 'Inter', system-ui, sans-serif; font-size: 13px; color: #0F172A; margin: 32px; }
           .rpt-header { display: flex; justify-content: space-between; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #0F172A; }

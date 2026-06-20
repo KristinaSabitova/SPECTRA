@@ -1,11 +1,14 @@
+import hmac
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_client_ip, get_current_user, require_roles
 from app.core.rate_limiter import auth_limiter
+from jwt.exceptions import InvalidTokenError
+
 from app.core.security import decode_token
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -14,7 +17,6 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
-    RefreshRequest,
     RegisterRequest,
     SessionResponse,
     TOTPDisableRequest,
@@ -31,9 +33,24 @@ router = APIRouter()
 _log = logging.getLogger("spectra.auth")
 
 
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="refresh_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.jwt_refresh_token_expire_days * 86400,
+        path="/api/v1/auth",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(key="refresh_token", path="/api/v1/auth", httponly=True, secure=True, samesite="strict")
+
+
 class TOTPEnableConfirmRequest(BaseModel):
     code: str
-    secret: str
     backup_codes: list[str]
 
     @field_validator("code")
@@ -49,9 +66,12 @@ def _svc(db: AsyncSession) -> AuthService:
 
 
 def _current_session_id(request: Request) -> str:
-    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    payload = decode_token(token)
-    return payload["sid"]
+    try:
+        token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        payload = decode_token(token)
+        return payload["sid"]
+    except (InvalidTokenError, KeyError, ValueError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
 
 
 # ─────────────────────────── setup ──────────────────────────────────────────
@@ -65,8 +85,10 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
 @router.post("/setup/admin", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def setup_admin(
     body: RegisterRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await auth_limiter.check(f"setup:{get_client_ip(request)}")
     user = await _svc(db).setup_admin(body.email, body.username, body.password)
     return UserResponse.model_validate(user)
 
@@ -82,7 +104,7 @@ async def register(
     ip = get_client_ip(request)
     # Rate limit: 5 registration attempts per IP per minute
     await auth_limiter.check(f"register:{ip}")
-    if settings.invite_code and body.invite_code != settings.invite_code:
+    if settings.invite_code and not hmac.compare_digest(body.invite_code, settings.invite_code):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Código de invitación inválido")
     user = await _svc(db).register(
         email=body.email,
@@ -119,6 +141,7 @@ async def register_privileged(
 async def login(
     body: LoginRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     ip = get_client_ip(request)
@@ -129,6 +152,8 @@ async def login(
     # Reset rate limit on successful credential check (2FA may still be required)
     if not result.get("requires_2fa"):
         auth_limiter.reset(f"login:{ip}")
+    if result.get("tokens"):
+        _set_refresh_cookie(response, result["tokens"]["refresh_token"])
     return LoginResponse(**result)
 
 
@@ -136,6 +161,7 @@ async def login(
 async def login_2fa(
     body: TOTPLoginRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     ip = get_client_ip(request)
@@ -144,6 +170,8 @@ async def login_2fa(
     ua = request.headers.get("User-Agent")
     result = await _svc(db).complete_2fa(body.temp_token, body.code, ip, ua)
     auth_limiter.reset(f"2fa:{ip}")
+    if result.get("tokens"):
+        _set_refresh_cookie(response, result["tokens"]["refresh_token"])
     return LoginResponse(requires_2fa=False, **result)
 
 
@@ -151,13 +179,17 @@ async def login_2fa(
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_tokens(
-    body: RefreshRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing refresh token")
     ip = get_client_ip(request)
     ua = request.headers.get("User-Agent")
-    tokens = await _svc(db).refresh_tokens(body.refresh_token, ip, ua)
+    tokens = await _svc(db).refresh_tokens(refresh_token, ip, ua)
+    _set_refresh_cookie(response, tokens["refresh_token"])
     return TokenResponse(**tokens)
 
 
@@ -166,6 +198,7 @@ async def refresh_tokens(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -173,17 +206,20 @@ async def logout(
     ip = get_client_ip(request)
     ua = request.headers.get("User-Agent")
     await _svc(db).logout(session_id, current_user.id, ip, ua)
+    _clear_refresh_cookie(response)
 
 
 @router.post("/logout/all")
 async def logout_all(
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     ip = get_client_ip(request)
     ua = request.headers.get("User-Agent")
     count = await _svc(db).logout_all(current_user.id, ip, ua)
+    _clear_refresh_cookie(response)
     return {"sessions_revoked": count}
 
 
@@ -263,7 +299,7 @@ async def enable_2fa(
     ip = get_client_ip(request)
     ua = request.headers.get("User-Agent")
     await _svc(db).enable_totp(
-        current_user, body.code, body.secret, body.backup_codes, ip, ua
+        current_user, body.code, body.backup_codes, ip, ua
     )
     return {"enabled": True}
 
@@ -285,8 +321,8 @@ async def disable_2fa(
 
 @router.get("/audit-log", response_model=list[AuditLogEntry])
 async def get_audit_log(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
