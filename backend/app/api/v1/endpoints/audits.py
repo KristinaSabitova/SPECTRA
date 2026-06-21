@@ -73,7 +73,10 @@ async def create_audit(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    pipeline_result = await db.execute(select(Pipeline).where(Pipeline.id == body.pipeline_id))
+    pipeline_q = select(Pipeline).where(Pipeline.id == body.pipeline_id)
+    if UserRole(current_user.role) != UserRole.admin:
+        pipeline_q = pipeline_q.where(Pipeline.owner_id == current_user.id)
+    pipeline_result = await db.execute(pipeline_q)
     pipeline = pipeline_result.scalar_one_or_none()
     if not pipeline:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pipeline not found")

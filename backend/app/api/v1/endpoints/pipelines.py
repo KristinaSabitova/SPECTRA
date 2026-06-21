@@ -68,21 +68,33 @@ async def create_pipeline(
     return pipeline
 
 
-@router.get("/{pipeline_id}", response_model=PipelineResponse, dependencies=[Depends(get_current_user)])
-async def get_pipeline(pipeline_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Pipeline).where(Pipeline.id == pipeline_id))
+@router.get("/{pipeline_id}", response_model=PipelineResponse)
+async def get_pipeline(
+    pipeline_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = select(Pipeline).where(Pipeline.id == pipeline_id)
+    if UserRole(current_user.role) != UserRole.admin:
+        q = q.where(Pipeline.owner_id == current_user.id)
+    result = await db.execute(q)
     pipeline = result.scalar_one_or_none()
     if not pipeline:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pipeline not found")
     return pipeline
 
 
-@router.delete("/{pipeline_id}", status_code=status.HTTP_204_NO_CONTENT,
-               dependencies=[Depends(require_roles(UserRole.admin, UserRole.senior))])
-async def delete_pipeline(pipeline_id: str, db: AsyncSession = Depends(get_db)) -> Response:
+@router.delete("/{pipeline_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_pipeline(
+    pipeline_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.admin, UserRole.senior)),
+) -> Response:
     result = await db.execute(select(Pipeline).where(Pipeline.id == pipeline_id))
     pipeline = result.scalar_one_or_none()
     if not pipeline:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pipeline not found")
+    if UserRole(current_user.role) != UserRole.admin and pipeline.owner_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pipeline not found")
 
     audit_count = (await db.execute(

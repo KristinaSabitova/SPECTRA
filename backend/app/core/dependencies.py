@@ -17,7 +17,7 @@ _bearer = HTTPBearer(auto_error=False)
 def get_client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[-1].strip()
+        return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 

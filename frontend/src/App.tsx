@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { useAuthStore } from '@/store/auth'
-import { setupApi } from '@/services/api'
+import { authApi, setupApi } from '@/services/api'
 import AppLayout from '@/components/layout/AppLayout'
 import Spinner from '@/components/common/Spinner'
 import Login from '@/pages/Login'
@@ -46,6 +46,9 @@ function SeniorPlusRoute({ children }: { children: ReactNode }) {
 export default function App() {
   const [setupChecked, setSetupChecked] = useState(false)
   const [needsSetup, setNeedsSetup] = useState(false)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const user = useAuthStore((s) => s.user)
+  const updateUser = useAuthStore((s) => s.updateUser)
 
   useEffect(() => {
     setupApi.status()
@@ -55,6 +58,15 @@ export default function App() {
       })
       .catch(() => setSetupChecked(true))
   }, [])
+
+  // Re-fetch user profile on load so role is never read from localStorage
+  useEffect(() => {
+    if (isAuthenticated && !user) {
+      authApi.me()
+        .then(({ data }) => updateUser(data))
+        .catch(() => useAuthStore.getState().clearAuth())
+    }
+  }, [isAuthenticated, user, updateUser])
 
   if (!setupChecked) return <Spinner page />
 

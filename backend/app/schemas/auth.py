@@ -19,7 +19,6 @@ class RegisterRequest(BaseModel):
     username: Annotated[str, Field(min_length=3, max_length=50)]
     password: Annotated[str, Field(min_length=12, max_length=128)]
     invite_code: Annotated[str, Field(max_length=128)] = ""
-    role: UserRole = UserRole.junior
 
     @field_validator("username")
     @classmethod
@@ -36,6 +35,10 @@ class RegisterRequest(BaseModel):
                 "password must be ≥12 chars with uppercase, lowercase, digit and special char"
             )
         return v
+
+
+class RegisterPrivilegedRequest(RegisterRequest):
+    role: UserRole = UserRole.junior
 
 
 class LoginRequest(BaseModel):

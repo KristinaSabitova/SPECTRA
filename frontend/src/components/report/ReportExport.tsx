@@ -218,51 +218,53 @@ export default function ReportExport({ run, events, onClose }: Props) {
 
   function handlePrint() {
     if (!printRef.current) return
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>SPECTRA Report – ${escapeHtml(run.target_url)}</title>
-        <style>
-          body { font-family: 'Inter', system-ui, sans-serif; font-size: 13px; color: #0F172A; margin: 32px; }
-          .rpt-header { display: flex; justify-content: space-between; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #0F172A; }
-          .rpt-logo { font-family: monospace; font-size: 20px; font-weight: 700; letter-spacing: 4px; }
-          h1 { font-size: 22px; margin-bottom: 20px; }
-          h2 { font-size: 15px; margin: 20px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #E2E8F0; }
-          .rpt-score-block { text-align: center; margin: 24px 0; }
-          .rpt-score-number { font-size: 52px; font-weight: 800; line-height: 1; }
-          .rpt-score-number span { font-size: 24px; color: #64748B; }
-          .rpt-score-level { font-size: 13px; letter-spacing: 3px; color: #64748B; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          td, th { padding: 6px 10px; border: 1px solid #E2E8F0; }
-          th { background: #F8FAFC; font-weight: 600; }
-          code, pre { font-family: monospace; background: #F8FAFC; padding: 2px 4px; border-radius: 3px; font-size: 11px; }
-          pre { padding: 8px; overflow: auto; max-height: 200px; white-space: pre-wrap; }
-          .rpt-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 4px; }
-          .rpt-badge--critical { background: #FEF2F2; color: #DC2626; }
-          .rpt-badge--high { background: #FFF7ED; color: #EA580C; }
-          .rpt-badge--medium { background: #FFFBEB; color: #D97706; }
-          .rpt-badge--low { background: #F0FDF4; color: #16A34A; }
-          .rpt-badge--malicious { background: #FEF2F2; color: #DC2626; }
-          .rpt-badge--suspicious { background: #FFF7ED; color: #EA580C; }
-          .rpt-finding { border: 1px solid #E2E8F0; padding: 12px; margin-bottom: 12px; border-radius: 4px; }
-          .rpt-finding-header { margin-bottom: 8px; }
-          .rpt-footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #E2E8F0; font-size: 11px; color: #94A3B8; text-align: center; }
-          ol li { margin-bottom: 8px; line-height: 1.6; }
-          .rpt-bar-outer { height: 6px; background: #E2E8F0; border-radius: 3px; flex: 1; margin: 0 8px; display: inline-block; width: 100px; vertical-align: middle; }
-          .rpt-bar-inner { height: 100%; background: #EF4444; border-radius: 3px; }
-          .rpt-score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-          @media print { body { margin: 20px; } }
-        </style>
-      </head>
-      <body>${printRef.current.innerHTML}</body>
-      </html>
-    `)
-    win.document.close()
-    setTimeout(() => { win.print() }, 400)
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SPECTRA Report – ${escapeHtml(run.target_url)}</title>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; font-size: 13px; color: #0F172A; margin: 32px; }
+    .rpt-header { display: flex; justify-content: space-between; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #0F172A; }
+    .rpt-logo { font-family: monospace; font-size: 20px; font-weight: 700; letter-spacing: 4px; }
+    h1 { font-size: 22px; margin-bottom: 20px; }
+    h2 { font-size: 15px; margin: 20px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #E2E8F0; }
+    .rpt-score-block { text-align: center; margin: 24px 0; }
+    .rpt-score-number { font-size: 52px; font-weight: 800; line-height: 1; }
+    .rpt-score-number span { font-size: 24px; color: #64748B; }
+    .rpt-score-level { font-size: 13px; letter-spacing: 3px; color: #64748B; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    td, th { padding: 6px 10px; border: 1px solid #E2E8F0; }
+    th { background: #F8FAFC; font-weight: 600; }
+    code, pre { font-family: monospace; background: #F8FAFC; padding: 2px 4px; border-radius: 3px; font-size: 11px; }
+    pre { padding: 8px; overflow: auto; max-height: 200px; white-space: pre-wrap; }
+    .rpt-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 4px; }
+    .rpt-badge--critical { background: #FEF2F2; color: #DC2626; }
+    .rpt-badge--high { background: #FFF7ED; color: #EA580C; }
+    .rpt-badge--medium { background: #FFFBEB; color: #D97706; }
+    .rpt-badge--low { background: #F0FDF4; color: #16A34A; }
+    .rpt-badge--malicious { background: #FEF2F2; color: #DC2626; }
+    .rpt-badge--suspicious { background: #FFF7ED; color: #EA580C; }
+    .rpt-finding { border: 1px solid #E2E8F0; padding: 12px; margin-bottom: 12px; border-radius: 4px; }
+    .rpt-finding-header { margin-bottom: 8px; }
+    .rpt-footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #E2E8F0; font-size: 11px; color: #94A3B8; text-align: center; }
+    ol li { margin-bottom: 8px; line-height: 1.6; }
+    .rpt-bar-outer { height: 6px; background: #E2E8F0; border-radius: 3px; flex: 1; margin: 0 8px; display: inline-block; width: 100px; vertical-align: middle; }
+    .rpt-bar-inner { height: 100%; background: #EF4444; border-radius: 3px; }
+    .rpt-score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    @media print { body { margin: 20px; } }
+  </style>
+</head>
+<body>${printRef.current.innerHTML}</body>
+</html>`
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const win = window.open(url, '_blank')
+    if (!win) { URL.revokeObjectURL(url); return }
+    win.addEventListener('load', () => {
+      win.print()
+      URL.revokeObjectURL(url)
+    })
   }
 
   function handleDownload() {

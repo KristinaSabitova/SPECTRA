@@ -19,6 +19,7 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
+    RegisterPrivilegedRequest,
     RegisterRequest,
     SessionResponse,
     TOTPDisableRequest,
@@ -175,7 +176,7 @@ async def register(
     status_code=status.HTTP_201_CREATED,
 )
 async def register_privileged(
-    body: RegisterRequest,
+    body: RegisterPrivilegedRequest,
     db: AsyncSession = Depends(get_db),
     requester: User = Depends(require_roles(UserRole.admin)),
 ):
@@ -241,6 +242,7 @@ async def refresh_tokens(
     if not refresh_token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing refresh token")
     ip = get_client_ip(request)
+    await auth_limiter.check(f"refresh:{ip}")
     ua = request.headers.get("User-Agent")
     tokens = await _svc(db).refresh_tokens(refresh_token, ip, ua)
     _set_refresh_cookie(response, tokens["refresh_token"])
@@ -292,6 +294,7 @@ async def change_password(
     current_user: User = Depends(get_current_user),
 ):
     ip = get_client_ip(request)
+    await auth_limiter.check(f"passwd:{ip}")
     ua = request.headers.get("User-Agent")
     await _svc(db).change_password(current_user, body.current_password, body.new_password, ip, ua)
 
@@ -366,6 +369,7 @@ async def disable_2fa(
     current_user: User = Depends(get_current_user),
 ):
     ip = get_client_ip(request)
+    await auth_limiter.check(f"2fa-disable:{ip}")
     ua = request.headers.get("User-Agent")
     await _svc(db).disable_totp(current_user, body.code, ip, ua)
     return {"disabled": True}

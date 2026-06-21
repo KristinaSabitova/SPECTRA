@@ -38,7 +38,7 @@ services:
         --port 8000
         --workers 1
         --proxy-headers
-        --forwarded-allow-ips "*"
+        --forwarded-allow-ips "nginx"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 10s

@@ -44,9 +44,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: STORAGE_KEY,
-      // accessToken intentionally excluded — lives in memory only, never in localStorage
+      // accessToken and user intentionally excluded — token lives in memory only,
+      // user is re-fetched from /auth/me on app load to avoid stale role in localStorage
       partialize: (state) => ({
-        user: state.user,
         isAuthenticated: state.isAuthenticated,
         mustChangePassword: state.mustChangePassword,
       }),

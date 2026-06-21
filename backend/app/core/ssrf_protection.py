@@ -58,7 +58,7 @@ def validate_target_url(url: str) -> None:
     Raises HTTPException 400 on any violation.
     """
     parsed = urlparse(url)
-    _ALLOWED_HOSTS = {"lab", "backend", "frontend", "db"}
+    _ALLOWED_HOSTS = {"lab"}
     if parsed.hostname in _ALLOWED_HOSTS:
         return
     if not parsed.scheme or parsed.scheme not in ("http", "https"):
@@ -89,6 +89,11 @@ def validate_target_url(url: str) -> None:
     except ValueError:
         pass  # hostname is a domain name, continue to DNS resolution
 
+    # KNOWN LIMITATION — DNS rebinding / TOCTOU: we resolve here and then httpx
+    # opens a new connection that resolves DNS again.  An attacker who controls
+    # DNS TTL could serve a public IP for the check and a private IP for the
+    # actual request.  Future fix: resolve once, pass the IP literal directly to
+    # httpx (e.g. via a custom transport or the `proxies` param with an IP URL).
     try:
         infos = socket.getaddrinfo(hostname, parsed.port or 80, proto=socket.IPPROTO_TCP)
     except socket.gaierror as exc:

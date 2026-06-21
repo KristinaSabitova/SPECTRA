@@ -14,14 +14,14 @@ import math
 from datetime import datetime, timezone
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader
 
 from app.models.execution import ExecutionEvent, ExecutionRun
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 _jinja_env = Environment(
     loader=FileSystemLoader(str(_TEMPLATE_DIR)),
-    autoescape=select_autoescape(["html"]),
+    autoescape=True,
 )
 
 
