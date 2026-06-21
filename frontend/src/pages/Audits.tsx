@@ -167,7 +167,7 @@ export default function Audits() {
   const removeAudit = useDataStore(s => s.removeAudit)
 
   const role      = useAuthStore(s => s.user?.role)
-  const canCreate = role === 'admin' || role === 'senior'
+  const canCreate = role === 'admin' || role === 'senior' || role === 'trial'
   const canDelete = role === 'admin'
 
   const [showModal, setShowModal] = useState(false)

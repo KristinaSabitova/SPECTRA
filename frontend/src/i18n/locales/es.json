@@ -220,7 +220,7 @@
     "loading": "Cargando…", "error": "Se produjo un error", "retry": "Reintentar", "save": "Guardar", "cancel": "Cancelar", "confirm": "Confirmar",
     "delete": "Eliminar", "edit": "Editar", "view": "Ver", "back": "Volver", "search": "Buscar", "noResults": "Sin resultados",
     "id": "ID", "createdAt": "Creado", "updatedAt": "Actualizado",
-    "role": { "admin": "Administrador", "senior": "Senior", "junior": "Junior" }
+    "role": { "admin": "Administrador", "senior": "Senior", "junior": "Junior", "trial": "Trial" }
   },
   "configAudit": {
     "title": "Auditoría de Configuración IA",

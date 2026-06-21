@@ -1,6 +1,6 @@
 // ── Auth ──────────────────────────────────────────────────────────────
 
-export type UserRole = 'admin' | 'senior' | 'junior'
+export type UserRole = 'admin' | 'senior' | 'junior' | 'trial'
 
 export interface UserResponse {
   id: string

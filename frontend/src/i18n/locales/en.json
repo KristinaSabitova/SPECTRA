@@ -220,7 +220,7 @@
     "loading": "Loading…", "error": "An error occurred", "retry": "Retry", "save": "Save", "cancel": "Cancel", "confirm": "Confirm",
     "delete": "Delete", "edit": "Edit", "view": "View", "back": "Back", "search": "Search", "noResults": "No results",
     "id": "ID", "createdAt": "Created", "updatedAt": "Updated",
-    "role": { "admin": "Administrator", "senior": "Senior", "junior": "Junior" }
+    "role": { "admin": "Administrator", "senior": "Senior", "junior": "Junior", "trial": "Trial" }
   },
   "configAudit": {
     "title": "AI Configuration Audit",
