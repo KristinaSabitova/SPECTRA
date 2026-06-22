@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/pipelines',    icon: GitBranch,       key: 'nav.pipelines',   roles: ['admin', 'senior', 'trial'] },
   { to: '/audits',       icon: ShieldCheck,     key: 'nav.audits'    },
   { to: '/reports',      icon: FileText,        key: 'nav.reports'   },
-  { to: '/config-audit', icon: ScanSearch,      key: 'nav.configAudit', roles: ['admin', 'senior'] },
+  { to: '/config-audit', icon: ScanSearch,      key: 'nav.configAudit', roles: ['admin', 'senior', 'trial'] },
   { to: '/users',        icon: Users,           key: 'nav.users',       roles: ['admin'] },
 ]
 
