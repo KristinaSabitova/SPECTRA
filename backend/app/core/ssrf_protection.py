@@ -49,7 +49,7 @@ def _is_private(ip_str: str) -> bool:
     return any(addr in net for net in _BLOCKED_NETWORKS)
 
 
-def validate_target_url(url: str) -> None:
+def validate_target_url(url: str) -> str:
     """
     Validate that a user-supplied URL does not point to private infrastructure.
 
@@ -57,11 +57,15 @@ def validate_target_url(url: str) -> None:
     to a private or reserved address.  The error message is intentionally vague
     to avoid leaking internal DNS topology to an attacker.
 
+    Returns the resolved IP address so the caller can pin the actual HTTP
+    connection to that IP, preventing DNS rebinding (TOCTOU).  Returns ""
+    for pre-approved URLs (demo_lab_url) where no substitution is needed.
+
     Raises HTTPException 400 on any violation.
     """
     parsed = urlparse(url)
     if settings.demo_lab_url and url.startswith(settings.demo_lab_url):
-        return
+        return ""
     if not parsed.scheme or parsed.scheme not in ("http", "https"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -85,16 +89,10 @@ def validate_target_url(url: str) -> None:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Target URL points to a restricted address.",
             )
-        # IP literal is public — no DNS resolution needed, skip to success
-        return
+        return hostname  # IP literal is public — return it directly
     except ValueError:
         pass  # hostname is a domain name, continue to DNS resolution
 
-    # KNOWN LIMITATION — DNS rebinding / TOCTOU: we resolve here and then httpx
-    # opens a new connection that resolves DNS again.  An attacker who controls
-    # DNS TTL could serve a public IP for the check and a private IP for the
-    # actual request.  Future fix: resolve once, pass the IP literal directly to
-    # httpx (e.g. via a custom transport or the `proxies` param with an IP URL).
     try:
         infos = socket.getaddrinfo(hostname, parsed.port or 80, proto=socket.IPPROTO_TCP)
     except socket.gaierror as exc:
@@ -103,11 +101,16 @@ def validate_target_url(url: str) -> None:
             detail=f"Cannot resolve target hostname: {exc}",
         )
 
+    first_public_ip: str | None = None
     for family, _type, _proto, _canonname, sockaddr in infos:
-        resolved_ip = sockaddr[0]
-        if _is_private(resolved_ip):
+        ip = sockaddr[0]
+        if _is_private(ip):
             # Intentionally omit the resolved IP to prevent info leaks
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Target URL resolves to a private or reserved address.",
             )
+        if first_public_ip is None:
+            first_public_ip = ip
+
+    return first_public_ip or ""

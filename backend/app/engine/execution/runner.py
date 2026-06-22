@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass, field
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 
@@ -312,7 +313,7 @@ class ExecutionRunner:
         # SSRF validation: re-check before the actual HTTP connection in case
         # DNS was resolved at request creation time (DNS rebinding mitigation)
         from app.core.ssrf_protection import validate_target_url
-        validate_target_url(cfg.target_url)
+        resolved_ip = validate_target_url(cfg.target_url)
 
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(cfg.request_timeout),
@@ -321,6 +322,12 @@ class ExecutionRunner:
             verify=True,
         ) as client:
             invoke_url = self._best_invoke_url(profile)
+            # Pin to the pre-resolved IP to prevent DNS rebinding between
+            # validation and the actual connection (TOCTOU fix).
+            if resolved_ip:
+                _p = urlparse(invoke_url)
+                _netloc = f"{resolved_ip}:{_p.port}" if _p.port else resolved_ip
+                invoke_url = urlunparse(_p._replace(netloc=_netloc))
 
             for gp in payloads:
                 t0 = time.monotonic()
