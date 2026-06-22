@@ -15,9 +15,11 @@ _bearer = HTTPBearer(auto_error=False)
 
 
 def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # X-Real-IP is set by nginx from $remote_addr — not spoofable by clients
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    # Fallback for development (no nginx): use direct connection IP
     return request.client.host if request.client else "unknown"
 
 
