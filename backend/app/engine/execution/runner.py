@@ -322,12 +322,13 @@ class ExecutionRunner:
             verify=True,
         ) as client:
             invoke_url = self._best_invoke_url(profile)
-            # Pin to the pre-resolved IP to prevent DNS rebinding between
-            # validation and the actual connection (TOCTOU fix).
             if resolved_ip:
-                _p = urlparse(invoke_url)
-                _netloc = f"{resolved_ip}:{_p.port}" if _p.port else resolved_ip
-                invoke_url = urlunparse(_p._replace(netloc=_netloc))
+                parsed_invoke = urlparse(invoke_url)
+                default_port = 443 if parsed_invoke.scheme == "https" else 80
+                port = parsed_invoke.port or default_port
+                invoke_url = urlunparse(
+                    parsed_invoke._replace(netloc=f"{resolved_ip}:{port}")
+                )
 
             for gp in payloads:
                 t0 = time.monotonic()
