@@ -25,6 +25,8 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException, status
 
+from app.config import settings
+
 _BLOCKED_NETWORKS: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = [
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("10.0.0.0/8"),
@@ -58,8 +60,7 @@ def validate_target_url(url: str) -> None:
     Raises HTTPException 400 on any violation.
     """
     parsed = urlparse(url)
-    _ALLOWED_HOSTS = {"lab"}
-    if parsed.hostname in _ALLOWED_HOSTS:
+    if settings.demo_lab_url and url.startswith(settings.demo_lab_url):
         return
     if not parsed.scheme or parsed.scheme not in ("http", "https"):
         raise HTTPException(
