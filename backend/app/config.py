@@ -1,17 +1,20 @@
+import secrets
 import sys
 from datetime import timedelta
 
+from cryptography.fernet import Fernet
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
-_DEFAULT_SECRET = "dev-secret-key-change-in-production"
-_DEFAULT_JWT = "dev-jwt-secret-change-in-production"
-# base64url(b"dev-totp-key-must-change-in-prod") — valid Fernet key, dev only
-_DEFAULT_TOTP_KEY = "ZGV2LXRvdHAta2V5LW11c3QtY2hhbmdlLWluLXByb2Q="
+
+def _generate_fernet_key() -> str:
+    import base64
+    return base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
 
 
 class Settings(BaseSettings):
     app_env: str = "development"
-    app_secret_key: str = _DEFAULT_SECRET
+    app_secret_key: str = Field(default_factory=lambda: secrets.token_hex(32))
     app_debug: bool = False
 
     # Set DATABASE_URL to use PostgreSQL in production:
@@ -24,7 +27,7 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # JWT
-    jwt_secret_key: str = _DEFAULT_JWT
+    jwt_secret_key: str = Field(default_factory=lambda: secrets.token_hex(32))
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
@@ -34,7 +37,7 @@ class Settings(BaseSettings):
     totp_issuer: str = "SPECTRA"
     # Fernet key for encrypting TOTP secrets at rest.
     # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-    totp_encryption_key: str = _DEFAULT_TOTP_KEY
+    totp_encryption_key: str = Field(default_factory=_generate_fernet_key)
 
     # Usage limits (0 = unlimited)
     max_runs_per_day: int = 0
@@ -108,36 +111,19 @@ def validate_secrets() -> None:
             errors.append(
                 "APP_DEBUG is True in production. Set APP_DEBUG=false in your .env file."
             )
-        if settings.app_secret_key == _DEFAULT_SECRET or len(settings.app_secret_key) < 32:
+        if len(settings.app_secret_key) < 32:
             errors.append(
-                "APP_SECRET_KEY is the default value or shorter than 32 characters. "
+                "APP_SECRET_KEY is shorter than 32 characters. "
                 "Set a strong random secret in your .env file."
             )
-        if settings.jwt_secret_key == _DEFAULT_JWT or len(settings.jwt_secret_key) < 32:
+        if len(settings.jwt_secret_key) < 32:
             errors.append(
-                "JWT_SECRET_KEY is the default value or shorter than 32 characters. "
+                "JWT_SECRET_KEY is shorter than 32 characters. "
                 "Set a strong random secret in your .env file."
-            )
-        if settings.totp_encryption_key == _DEFAULT_TOTP_KEY:
-            errors.append(
-                "TOTP_ENCRYPTION_KEY is the default dev value. "
-                "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
             )
         if errors:
             for msg in errors:
                 print(f"[SPECTRA STARTUP ERROR] {msg}", file=sys.stderr)
             sys.exit(1)
     else:
-        # Development: warn but don't exit
-        if settings.app_secret_key == _DEFAULT_SECRET:
-            print(
-                "[SPECTRA WARNING] APP_SECRET_KEY is the default development value. "
-                "Change it before deploying to production.",
-                file=sys.stderr,
-            )
-        if settings.jwt_secret_key == _DEFAULT_JWT:
-            print(
-                "[SPECTRA WARNING] JWT_SECRET_KEY is the default development value. "
-                "Change it before deploying to production.",
-                file=sys.stderr,
-            )
+        pass  # Development: secrets are ephemeral random values if not set in .env
