@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,10 +20,10 @@ router = APIRouter()
 
 
 class CreatePipelineRequest(BaseModel):
-    name: str
-    endpoint_url: str
-    framework: str
-    description: str | None = None
+    name:         Annotated[str, Field(min_length=1, max_length=200)]
+    endpoint_url: Annotated[str, Field(max_length=2048)]
+    framework:    Literal["langchain", "autogen", "n8n", "dify", "generic"]
+    description:  Annotated[str | None, Field(max_length=1000)] = None
 
 
 class PipelineResponse(BaseModel):

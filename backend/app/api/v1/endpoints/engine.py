@@ -19,6 +19,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, select, update
@@ -369,7 +371,7 @@ async def cancel_run(
 @router.get("/runs/{run_id}/report")
 async def get_run_report(
     run_id: str,
-    format: str = "markdown",
+    format: Literal["markdown", "pdf", "html"] = "markdown",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:

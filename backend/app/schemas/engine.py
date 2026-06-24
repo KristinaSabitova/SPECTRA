@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.engine.payloads.catalog import PayloadType
 from app.engine.payloads.mutator import MutationStrategy
@@ -31,8 +31,26 @@ class CreateRunRequest(BaseModel):
         default_factory=lambda: [MutationStrategy.NONE]
     )
     request_timeout: float = Field(default=15.0, ge=1.0, le=120.0)
-    auth_headers: Annotated[dict[str, str], Field(default_factory=dict)]
+    # auth_headers — máximo 20 headers, claves ≤256 chars, valores ≤4096 chars
+    auth_headers: Annotated[
+        dict[
+            Annotated[str, Field(max_length=256)],
+            Annotated[str, Field(max_length=4096)]
+        ],
+        Field(default_factory=dict, max_length=20)
+    ]
+
+    # topology — validar tamaño máximo serializado
     topology: dict[str, Any] | None = None
+
+    @field_validator("topology", mode="before")
+    @classmethod
+    def validate_topology_size(cls, v):
+        if v is not None:
+            import json
+            if len(json.dumps(v)) > 64_000:
+                raise ValueError("topology exceeds maximum allowed size")
+        return v
     check_persistence: bool = True
     max_payloads: int = Field(default=0, ge=0)
 
