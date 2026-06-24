@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -180,8 +180,8 @@ async def _run_task(run_id: str, body: CreateRunRequest, timeout: float) -> None
     response_model=RunListResponse,
 )
 async def list_runs(
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RunListResponse:
@@ -233,8 +233,8 @@ async def get_run(
 )
 async def list_events(
     run_id: str,
-    limit: int = 200,
-    offset: int = 0,
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[EventResponse]:
