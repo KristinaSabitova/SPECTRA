@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import DOMPurify from 'dompurify'
 import { X, Printer, Download, FileText, Code } from 'lucide-react'
 import Button from '@/components/common/Button'
 import type { RunResponse, EngineEvent, RiskScore } from '@/types'
@@ -255,7 +256,7 @@ export default function ReportExport({ run, events, onClose }: Props) {
     @media print { body { margin: 20px; } }
   </style>
 </head>
-<body>${printRef.current.innerHTML}</body>
+<body>${DOMPurify.sanitize(printRef.current.innerHTML, { FORBID_TAGS: ['script'] })}</body>
 </html>`
     const blob = new Blob([html], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
