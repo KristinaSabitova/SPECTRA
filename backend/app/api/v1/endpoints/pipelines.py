@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_roles
+from app.core.ssrf_protection import validate_target_url
 from app.db.database import get_db
 from app.models.audit import Audit
 from app.models.pipeline import Pipeline
@@ -54,6 +55,7 @@ async def create_pipeline(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.admin, UserRole.senior, UserRole.trial)),
 ):
+    validate_target_url(body.endpoint_url.strip())
     pipeline = Pipeline(
         id=str(uuid.uuid4()),
         name=body.name.strip(),
