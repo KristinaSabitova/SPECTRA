@@ -164,15 +164,19 @@ _RULES: list[dict] = [
         "id": "r10",
         "title": "Missing output validation guidance",
         "pattern": re.compile(
-            r"^(?!.*\b(do not|never|must not|prohibited|forbidden|not allowed)\b.*(output|respond|return|send)).*$",
-            re.IGNORECASE | re.DOTALL,
+            r"\b(do not|never|must not|prohibited|forbidden|not allowed)\b",
+            re.IGNORECASE,
+        ),
+        "pattern2": re.compile(
+            r"\b(output|respond|return|send)\b",
+            re.IGNORECASE,
         ),
         "severity": "low",
         "suggestion": (
             "Add explicit output restrictions: 'Never output code, credentials, "
             "or internal system information in your responses.'"
         ),
-        "absence_check": True,  # fires when pattern does NOT match (i.e., no restriction found)
+        "absence_check": True,
     },
     {
         "id": "r11",
@@ -220,10 +224,13 @@ def _analyze(text: str) -> ConfigScanResponse:
     for rule in _RULES:
         is_absence = rule.get("absence_check", False)
         m = rule["pattern"].search(text)
+        if "pattern2" in rule:
+            m2 = rule["pattern2"].search(text)
+            m = m and m2
 
         if is_absence:
             if m:
-                # Pattern found means the good thing IS present — no finding
+                # Both patterns found — restriction is present, no finding
                 continue
             fragment = text[:80].strip() + ("…" if len(text) > 80 else "")
         else:
