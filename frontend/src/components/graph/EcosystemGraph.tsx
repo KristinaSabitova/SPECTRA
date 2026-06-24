@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import * as d3 from 'd3'
 import { useTranslation } from 'react-i18next'
+import DOMPurify from 'dompurify'
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import type { BlastRadiusDetail, GraphNodeDetail } from '@/types'
 
@@ -220,12 +221,12 @@ export default function EcosystemGraph({ detail }: Props) {
       .on('mouseenter', (ev, d) => {
         tooltip
           .style('opacity', 1)
-          .html(`
+          .html(DOMPurify.sanitize(`
             <strong>${d.label}</strong><br/>
             ${t(`graph.nodeTypes.${d.type}`, d.type)}<br/>
             ${t('graph.criticality')}: ${(d.criticality * 100).toFixed(0)}%<br/>
             ${t('graph.depth')}: ${d.depth}
-          `)
+          `))
           .style('left', `${ev.pageX + 12}px`)
           .style('top', `${ev.pageY - 8}px`)
       })

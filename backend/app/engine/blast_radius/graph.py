@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+import re
+
 import networkx as nx
 
 from app.engine.recognition.fingerprinter import PipelineProfile
@@ -188,7 +190,7 @@ class PipelineGraph:
                 continue
             pg_node = PipelineNode(
                 id=node_id,
-                label=node_def.get("label", node_id),
+                label=re.sub(r'<[^>]+>', '', str(node_def.get("label", node_id) or node_id))[:128],
                 node_type=node_def.get("type", "unknown"),
                 criticality=float(node_def.get("criticality", _DEFAULT_CRITICALITY)),
                 metadata=node_def.get("metadata", {}),
