@@ -3,7 +3,9 @@ import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import Annotated, BaseModel, Field, field_validator
+from typing import Annotated
+
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
