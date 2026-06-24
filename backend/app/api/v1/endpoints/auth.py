@@ -1,8 +1,9 @@
 import logging
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, field_validator
+from pydantic import Annotated, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -92,15 +93,29 @@ def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(key="refresh_token", path="/api/v1/auth", httponly=True, secure=True, samesite="strict")
 
 
+_BACKUP_CODE_RE = re.compile(r'^[0-9A-F]{4}-[0-9A-F]{4}$')
+
+
 class TOTPEnableConfirmRequest(BaseModel):
     code: str
-    backup_codes: list[str]
+    backup_codes: Annotated[
+        list[Annotated[str, Field(max_length=12)]],
+        Field(min_length=8, max_length=10)
+    ]
 
     @field_validator("code")
     @classmethod
     def validate_code(cls, v: str) -> str:
         if not v.isdigit() or len(v) != 6:
             raise ValueError("code must be 6 digits")
+        return v
+
+    @field_validator("backup_codes")
+    @classmethod
+    def validate_backup_codes(cls, v: list[str]) -> list[str]:
+        for code in v:
+            if not _BACKUP_CODE_RE.match(code):
+                raise ValueError("Invalid backup code format")
         return v
 
 
