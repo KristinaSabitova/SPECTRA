@@ -38,6 +38,7 @@ _BLOCKED_NETWORKS: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = [
     ipaddress.ip_network("::1/128"),
     ipaddress.ip_network("fc00::/7"),
     ipaddress.ip_network("fe80::/10"),
+    ipaddress.ip_network("::ffff:0:0/96"),   # IPv4-mapped IPv6
 ]
 
 
@@ -46,7 +47,10 @@ def _is_private(ip_str: str) -> bool:
         addr = ipaddress.ip_address(ip_str)
     except ValueError:
         return True  # unparseable — block by default
-    return any(addr in net for net in _BLOCKED_NETWORKS)
+    try:
+        return any(addr in net for net in _BLOCKED_NETWORKS)
+    except TypeError:
+        return True  # version mismatch IPv4/IPv6 — block by default
 
 
 def validate_target_url(url: str) -> str:
