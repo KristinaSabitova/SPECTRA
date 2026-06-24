@@ -121,6 +121,11 @@ def validate_secrets() -> None:
                 "JWT_SECRET_KEY is shorter than 32 characters. "
                 "Set a strong random secret in your .env file."
             )
+        if len(settings.totp_encryption_key) < 44:
+            errors.append(
+                "TOTP_ENCRYPTION_KEY is not set or invalid. "
+                "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            )
         if errors:
             for msg in errors:
                 print(f"[SPECTRA STARTUP ERROR] {msg}", file=sys.stderr)
