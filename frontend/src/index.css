@@ -532,6 +532,7 @@ select.form-input { cursor: pointer; }
 .badge-admin  { background: #F3E8FF; color: #7C3AED; border-color: #DDD6FE; }
 .badge-senior { background: var(--primary-light); color: var(--primary); border-color: #BFDBFE; }
 .badge-junior { background: #F8FAFC; color: #64748B; border-color: var(--border-strong); }
+.badge-trial  { background: #FFFBEB; color: #D97706; border-color: #FDE68A; }
 
 /* ── Alert ───────────────────────────────────────────────────────────── */
 .alert {

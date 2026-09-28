@@ -50,8 +50,16 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
+    # Estaticos ya compilados servidos por nginx como UID 101 (no root).
+    # Sin env_file y sin volumes a proposito: este contenedor no debe tener
+    # acceso a ningun secreto, ni a /root, ~/.aws, ~/.ssh o al socket de Docker.
+    user: "101:101"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     expose:
-      - "3000"
+      - "8080"
     depends_on:
       - backend
 

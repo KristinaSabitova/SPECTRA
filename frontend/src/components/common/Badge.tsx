@@ -2,7 +2,7 @@ type BadgeVariant =
   | 'critical' | 'high' | 'medium' | 'low' | 'info'
   | 'pending' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
   | 'malicious' | 'suspicious' | 'benign' | 'unknown'
-  | 'admin' | 'senior' | 'junior'
+  | 'admin' | 'senior' | 'junior' | 'trial'
 
 interface BadgeProps {
   variant: BadgeVariant

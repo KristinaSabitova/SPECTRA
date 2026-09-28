@@ -77,7 +77,7 @@ export default function Profile() {
     setTotpError(null)
     setTotpLoading(true)
     try {
-      await authApi.enable2fa({ code: totpCode, secret: totpSetup.secret, backup_codes: totpSetup.backup_codes })
+      await authApi.enable2fa({ code: totpCode, backup_codes: totpSetup.backup_codes })
       const { data: fresh } = await authApi.me()
       updateUser(fresh)
       setTotpStep('idle')
